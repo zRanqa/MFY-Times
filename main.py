@@ -1,12 +1,11 @@
 import os
 import json
 
-### TODO: Make it only accept the 2 best ppl on line for the score
 ### TODO: Round every score under 30 into 30
 ### TODO: Organise code :D
 ### TODO: show jake and adam
 
-WEIGHTED_LINE_LIST = {
+WEIGHTED_LINE_LIST = [
     "Kayleb Wilden",
     "Edan McLean",
     "Tyson Webb",
@@ -26,7 +25,7 @@ WEIGHTED_LINE_LIST = {
     "Noelle DI Paolo",
     "Khoa Phan"
     "Jeff Miaga",
-}
+]
 
 def getRosterFromDate(date: str):
     f = open(f'data/{date}/roster.json', "r")
@@ -72,6 +71,26 @@ def createTemplateData(roster):
                     "mfy_average": 0})
     return total_mfy_data
 
+
+def checkWorkersInHour(roster, i, mfy, j):
+    # foundLIST index 0 = count
+    foundList = [0]
+    for k in range(0, len(roster[i]["data"])):
+        if (int(roster[i]["data"][k]["start"]) <= int(mfy[j]["start"])) and (int(roster[i]["data"][k]["end"]) >= int(mfy[j]["end"])):
+            foundList.append(roster[i]["data"][k]["name"])
+            foundList[0] += 1
+
+    # Sort in order from WEIGHTED_LINE_LIST
+    swapIndex = 1
+    for k in range(0, len(WEIGHTED_LINE_LIST)):
+        for l in range(swapIndex, len(foundList)):
+            if WEIGHTED_LINE_LIST[k] == foundList[l]:
+                temp = foundList[swapIndex]
+                foundList[swapIndex] = foundList[l]
+                foundList[l] = temp
+                swapIndex += 1
+    return foundList
+
 DATE = input("Please enter week ending date to generate MFY averages, e.g(25-3-16):\n")
 
 data_folder_list = os.listdir('data')
@@ -94,8 +113,12 @@ total_mfy_data = createTemplateData(roster)
 for i in range(0, len(roster)):
     mfy = getMFYFromDate(roster[i]["date"])
     for j in range(0, len(mfy)):
+        workersInHour = checkWorkersInHour(roster, i, mfy, j)
         for k in range(0, len(roster[i]["data"])):
             if (int(roster[i]["data"][k]["start"]) <= int(mfy[j]["start"])) and (int(roster[i]["data"][k]["end"]) >= int(mfy[j]["end"])):
+                if workersInHour[0] > 2:
+                    if roster[i]["data"][k]["name"] != workersInHour[1] and roster[i]["data"][k]["name"] != workersInHour[2]:
+                        continue
                 for l in range(0,len(total_mfy_data)):
                     if (roster[i]["data"][k]["name"] == total_mfy_data[l]["name"]):
                         total_mfy_data[l]["mfy_total"] += int(mfy[j]["MFY"])
@@ -107,6 +130,6 @@ for i in range(0, len(total_mfy_data)):
 
 total_mfy_data = sortByAverage(total_mfy_data)
 
-print("Rankings:\n")
+print("\nRankings:")
 for i in range(0, len(total_mfy_data)):
     print(f"{i+1}.\t{total_mfy_data[i]["name"]}: {total_mfy_data[i]["mfy_average"]}")
