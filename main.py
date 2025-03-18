@@ -23,8 +23,8 @@ WEIGHTED_LINE_LIST = [
     "Niral Maharaj",
     "PJ Burgio-Spooner"
     "Noelle DI Paolo",
-    "Khoa Phan"
-    "Jeff Miaga",
+    "Khoa Phan",
+    "Jeff Miaga"
 ]
 
 def getRosterFromDate(date: str):
