@@ -125,6 +125,9 @@ for i in range(0, len(roster)):
                         total_mfy_data[l]["mfy_count"] += 1
 
 
+
+
+
 for i in range(0, len(total_mfy_data)):
     total_mfy_data[i]["mfy_average"] = total_mfy_data[i]["mfy_total"] / total_mfy_data[i]["mfy_count"]
 
