@@ -132,7 +132,7 @@ for i in range(0, len(total_mfy_data)):
     if total_mfy_data[i]["mfy_total"] == 0 or total_mfy_data[i]["mfy_count"] == 0:
         total_mfy_data[i]["mfy_average"] = 0
     else:
-        total_mfy_data[i]["mfy_average"] = total_mfy_data[i]["mfy_total"] / total_mfy_data[i]["mfy_count"]
+        total_mfy_data[i]["mfy_average"] = round(total_mfy_data[i]["mfy_total"] / total_mfy_data[i]["mfy_count"])
 
 total_mfy_data = sortByAverage(total_mfy_data)
 
