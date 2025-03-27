@@ -91,7 +91,7 @@ def checkWorkersInHour(roster, i, mfy, j):
                 swapIndex += 1
     return foundList
 
-DATE = input("Please enter week ending date to generate MFY averages, e.g(25-3-16):\n")
+DATE = input("Please enter week ending date to generate MFY averages, e.g(25-03-16):\n")
 
 data_folder_list = os.listdir('data')
 found = False
