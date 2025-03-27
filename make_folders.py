@@ -15,9 +15,9 @@ def get_next_date(last_date: str) -> str:
     if month > 12:
         month = 1
         year += 1
-    return f"{year}-{month}-{day}"
+    return f"{year:02}-{month:02}-{day:02}"
 
 
 list = os.listdir('data')
-list.sort()
+print(list)
 os.makedirs(f"data/{get_next_date(list[-1])}")
