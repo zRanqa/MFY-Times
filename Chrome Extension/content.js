@@ -72,7 +72,7 @@ function findMFY() {
     const rawDate = document.querySelector("#app > div.layout > div.subTitleText");
     const date = rawDate.textContent.split(" ")[0];
 
-    downloadJSON(data, `${date}-MFY`);
+    downloadJSON(data, `${date.padStart(2, '0')}-MFY`);
 }
 
 function formatDate(dateString) {
