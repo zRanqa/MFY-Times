@@ -1,10 +1,6 @@
 import os
 import json
 
-### TODO: Round every score under 30 into 30
-### TODO: Organise code :D
-### TODO: show jake and adam
-
 WEIGHTED_LINE_LIST = [
     "Kayleb Wilden",
     "Edan McLean",
