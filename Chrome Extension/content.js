@@ -1,3 +1,4 @@
+const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
 const monthToNum = {
     "Januray": 1,
@@ -12,6 +13,16 @@ const monthToNum = {
     "October": 10,
     "November": 11,
     "December": 12,
+}
+
+const dayToNum = {
+    "Monday": 0,
+    "Tuesday": 1,
+    "Wednesday": 2,
+    "Thursday": 3,
+    "Friday": 4,
+    "Saturday": 5,
+    "Sunday": 6
 }
 
 function downloadJSON(data, fileName) {
@@ -80,31 +91,63 @@ function formatDate(dateString) {
     year = date[3];
     day = date[2];
     month = monthToNum[date[1]];
-    return `${year}-${month}-${day}`
+    return {
+        dayName: date[0],
+        date: `${year}-${month}-${day}`
+    }
 }
+
+function decrementDate(dateString) {
+    date = dateString.split("-");
+    year = date[0];
+    month = date[1];
+    day = date[2];
+    day -= 1;
+    if (day <= 0) {
+        month -= 1;
+        if (month <= 0) {
+            month = 12
+            year -= 1
+        }
+        day = daysInMonth[month - 1]
+    }
+    return `${year}-${month}-${day}`
+
+}
+
 
 function findRosters() {
     let data = [];
+    let difference = 0;
     for (let i = 0; i < 7; i++) {
-        const dateString = document.querySelector(`#roster-linebars-report > table:nth-child(${3 + i}) > thead > tr:nth-child(1) > th`);
-        const table = document.querySelector(`#roster-linebars-report > table:nth-child(${3 + i}) > tbody:nth-child(3)`);
+        const dateString = document.querySelector(`#roster-linebars-report > table:nth-child(${3 + i - difference}) > thead > tr:nth-child(1) > th`);
+        const table = document.querySelector(`#roster-linebars-report > table:nth-child(${3 + i - difference}) > tbody:nth-child(3)`);
         document.querySelector("#roster-linebars-report > table:nth-child(4) > tbody:nth-child(3)")
-
+        
+        
         date = formatDate(dateString.textContent);
+
         let tableData = {
-            date: date,
+            date: date["date"],
             data: []
         };
-        for (let i = 1; i < table.children.length; i++) {
-            const row = table.children[i];
-            const name = row.children[0].textContent.replaceAll("\n", "").replaceAll("*", "").replaceAll(".","").trim();
-            const timeString = row.children[1].textContent;
-            const timeParts = timeString.split(" ");
-            tableData.data.push({
-                name,
-                start: round24HTime(timeParts[0], false),
-                end: round24HTime(timeParts[2], true)
-            });
+        if (dayToNum[date["dayName"]] != i) {
+            tableData.date = decrementDate(date["date"])
+            difference += 1
+        }
+        else {
+        // console.log(`I = ${i}, Date = ${date}`)
+            for (let i = 1; i < table.children.length; i++) {
+                const row = table.children[i];
+                const name = row.children[0].textContent.replaceAll("\n", "").replaceAll("*", "").replaceAll(".","").trim();
+                const timeString = row.children[1].textContent;
+                const timeParts = timeString.split(" ");
+                tableData.data.push({
+                    name,
+                    start: round24HTime(timeParts[0], false),
+                    end: round24HTime(timeParts[2], true)
+                });
+            }
         }
         data.push(tableData);
     }
