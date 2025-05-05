@@ -19,7 +19,8 @@ WEIGHTED_LINE_LIST = [
     "Niral Maharaj",
     "PJ Burgio-Spooner"
     "Noelle DI Paolo",
-    "Khoa Phan",
+    "Pheonix Di Sarno",
+    "Ria Patil",
     "Jeff Miaga"
 ]
 
