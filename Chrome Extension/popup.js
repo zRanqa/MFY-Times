@@ -11,9 +11,11 @@ function sendCommand(id) {
 
 timesButton.addEventListener("click", () => {
     sendCommand("times");
+    return true;
 });
 
 rosterButton.addEventListener("click", () => {
     sendCommand("roster");
+    return true;
 });
 

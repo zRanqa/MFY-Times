@@ -80,7 +80,7 @@ function findMFY() {
         };
     }
 
-    const rawDate = document.querySelector("#app > div.layout > div.subTitleText");
+    const rawDate = document.querySelector("#app > div.sectionWrapper > div.subTitleText")
     const date = rawDate.textContent.split(" ")[0];
 
     downloadJSON(data, `${date.padStart(2, '0')}-MFY`);
@@ -155,17 +155,18 @@ function findRosters() {
 }
 
 chrome.runtime.onMessage.addListener(
-    function(message, sender, sendResponse) {
+    async function(message, sender, sendResponse) {
         switch(message.type) {
             case "roster":
-                findRosters()
+                await findRosters()
                 break;
             case "times":
-                findMFY()
+                await findMFY()
                 break;
             default:
                     break;
         }
         sendResponse(message.type)
+        return true;
     }
 );

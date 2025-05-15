@@ -4,6 +4,7 @@ import json
 WEIGHTED_LINE_LIST = [
     "Kayleb Wilden",
     "Edan McLean",
+    "Jamil Taleb",
     "Tyson Webb",
     "Frankie Brar",
     "Levent Orcan"
@@ -20,8 +21,7 @@ WEIGHTED_LINE_LIST = [
     "PJ Burgio-Spooner"
     "Noelle DI Paolo",
     "Pheonix Di Sarno",
-    "Ria Patil",
-    "Jeff Miaga"
+    "Ria Patil"
 ]
 
 def getRosterFromDate(date: str):
