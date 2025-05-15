@@ -11,11 +11,11 @@ WEIGHTED_LINE_LIST = [
     "Kyle Mawer",
     "Ben Dummett",
     "Sarah Essery",
-    "Reebhav Chopra",
     "William Nicholls",
     "Max Kershaw",
     "Romaric Kabayija-Zawadi",
     "Edwin Thomas",
+    "Reebhav Chopra",
     "Lucinda Parker",
     "Niral Maharaj",
     "PJ Burgio-Spooner"
