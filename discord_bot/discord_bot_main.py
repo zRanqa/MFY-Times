@@ -19,8 +19,6 @@ import asyncio
 from _thread import *
 import threading
 
-TOKEN = os.getenv("TOKEN")
-
 
 intents = discord.Intents().all()
 client = discord.Client(intents=intents)
@@ -28,7 +26,8 @@ client = discord.Client(intents=intents)
 MFY_WEBSITE = "https://eops.mcdonalds.com.au/Snap"
 ROSTER_WEBSITE = "https://myrestaurant.mcdonalds.com.au/Restaurant/1036/Home"
 
-USERNAME = os.getenv("USERNAME")
+TOKEN = os.getenv("TOKEN")
+USERNAME = os.getenv("EMAIL")
 PASSWORD = os.getenv("PASSWORD")
 
 ZRANQA_ID = 663195676330557459
@@ -167,14 +166,19 @@ def downloadMFY():
             driver.switch_to.window(handle)
             break
 
+    # Scroll to the bottom of the page
+    driver.execute_script("window.scrollBy(0, 500);")
+    wait = WebDriverWait(driver, 5)
+    time.sleep(5)
+
     # Expand the information on the page (really only needed for thursday/friday but better to be consistent (im lazy))
     all_button = wait.until(EC.element_to_be_clickable((
         By.XPATH, "//div[@role='button' and contains(@aria-label, 'Items per page') and text()='All']"
     )))
-    # all_button.click()
+    all_button.click()
 
-    wait = WebDriverWait(driver, 15)
-    time.sleep(15)
+    wait = WebDriverWait(driver, 5)
+    time.sleep(5)
 
     # Open the already coded web scraper
     with open("discord_bot/scrape_utils.js", "r") as file:
@@ -186,6 +190,7 @@ def downloadMFY():
 
     result = driver.execute_script("return window.extractedMFY;")
     print(result)
+    write_mfy(result["date"], "test", result["data"])
 
     time.sleep(100)
 
@@ -216,6 +221,13 @@ def load_last_message_location():
 
 def valid_code(message):
     return message.content.startswith(("!!code", "!!other_code"))
+
+def write_mfy(date: str, week: str, data: list):
+    file_name = f"{date}-MFY.json"
+    file_path = os.path.join(f"data/{week}", file_name)
+
+    with open(file_path, "w") as f:
+        json.dump(data, f, indent=2)
 
 
 async def send_messages():
@@ -249,7 +261,8 @@ async def on_message(message):
             
             if waiting_for_mfa:
                 try:
-                    code = str(int(message.content.split(" ")[1]))
+                    int(message.content.split(" ")[1])
+                    code = message.content.split(" ")[1]
                     if len(code) == 6:
                         global mfa_code
                         mfa_code = str(code)
