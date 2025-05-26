@@ -61,31 +61,6 @@ function round24HTime(value, up) {
     return hour.toString()
 }
 
-function findMFY() {
-    let data = [];
-    // const table = document.querySelector("#app > div:nth-child(3) > div > div.snapshotDrillthruGrid.dx-widget.dx-visibility-change-handler > div > div.dx-bordered-bottom-view.dx-datagrid-rowsview.dx-datagrid-nowrap.dx-scrollable.dx-visibility-change-handler.dx-scrollable-both.dx-scrollable-simulated.dx-last-row-border > div > div > div.dx-scrollable-content > div > table > tbody")
-    const table = document.querySelectorAll("tbody")[1];
-    for (let i = 0; i < table.children.length - 2; i++) {
-        const row = table.children[i];
-        const timeString = row.children[0].textContent;
-        const MFY = row.children[5].textContent;
-        const timeParts = timeString.split(" ");
-        let tableData = {
-            start: timeTo24H(timeParts[0]),
-            end: timeTo24H(timeParts[2]),
-            MFY
-        };
-        if (MFY != '0' && MFY != '-') {
-            data.push(tableData);
-        };
-    }
-
-    const rawDate = document.querySelector("#app > div.sectionWrapper > div.subTitleText")
-    const date = rawDate.textContent.split(" ")[0];
-
-    downloadJSON(data, `${date.padStart(2, '0')}-MFY`);
-}
-
 function formatDate(dateString) {
     date = dateString.replaceAll(",", "").split(" ");
     year = date[3];
@@ -115,8 +90,35 @@ function decrementDate(dateString) {
 
 }
 
+window.findMFY = function() {
+    let data = [];
+    // const table = document.querySelector("#app > div:nth-child(3) > div > div.snapshotDrillthruGrid.dx-widget.dx-visibility-change-handler > div > div.dx-bordered-bottom-view.dx-datagrid-rowsview.dx-datagrid-nowrap.dx-scrollable.dx-visibility-change-handler.dx-scrollable-both.dx-scrollable-simulated.dx-last-row-border > div > div > div.dx-scrollable-content > div > table > tbody")
+    const table = document.querySelectorAll("tbody")[1];
+    for (let i = 0; i < table.children.length - 2; i++) {
+        const row = table.children[i];
+        const timeString = row.children[0].textContent;
+        const MFY = row.children[5].textContent;
+        const timeParts = timeString.split(" ");
+        let tableData = {
+            start: timeTo24H(timeParts[0]),
+            end: timeTo24H(timeParts[2]),
+            MFY
+        };
+        if (MFY != '0' && MFY != '-') {
+            data.push(tableData);
+        };
+    }
 
-function findRosters() {
+    const rawDate = document.querySelector("#app > div.sectionWrapper > div.subTitleText")
+    const date = rawDate.textContent.split(" ")[0];
+
+    window.extractedMFY = {
+        date,
+        data
+    };
+}
+
+window.findRosters = function() {
     let data = [];
     let difference = 0;
     for (let i = 0; i < 7; i++) {
@@ -151,22 +153,7 @@ function findRosters() {
         }
         data.push(tableData);
     }
-    downloadJSON(data, "roster");
+    window.extractedRoster = data;
 }
 
-chrome.runtime.onMessage.addListener(
-    async function(message, sender, sendResponse) {
-        switch(message.type) {
-            case "roster":
-                await findRosters()
-                break;
-            case "times":
-                await findMFY()
-                break;
-            default:
-                    break;
-        }
-        sendResponse(message.type)
-        return true;
-    }
-);
+console.log("scrape_utils.js loaded");
