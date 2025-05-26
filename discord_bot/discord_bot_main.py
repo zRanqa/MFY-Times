@@ -21,6 +21,7 @@ import threading
 
 TOKEN = os.getenv("TOKEN")
 
+
 intents = discord.Intents().all()
 client = discord.Client(intents=intents)
 
