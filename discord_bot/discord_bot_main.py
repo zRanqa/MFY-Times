@@ -64,12 +64,7 @@ def downloadMFY():
     password = wait.until(EC.element_to_be_clickable((By.ID, "PasswordInputManagers")))
     password.send_keys(PASSWORD)
 
-    # Click the login button.
-    wait = WebDriverWait(driver, 5)
-    button = wait.until(EC.presence_of_element_located((By.ID, "btnLoginManagers")))
-    button.click()
-    
-    # MFA Page, wait for a code (might move this up so no timeout)
+    # Right before logging in, wait for the MFA code to avoid timeouts
     global mfa_code
     global waiting_for_mfa
     global ask_for_code
@@ -79,7 +74,14 @@ def downloadMFY():
     while mfa_code == None:
         continue
     print("Code got!")
-    # Input the code into the input box.
+
+    # Click the login button.
+    wait = WebDriverWait(driver, 5)
+    button = wait.until(EC.presence_of_element_located((By.ID, "btnLoginManagers")))
+    button.click()
+    
+    
+    # Input the code into the MFA input box.
     pin_input = wait.until(EC.visibility_of_element_located((By.ID, "pin")))
     pin_input.send_keys(mfa_code)
     mfa_code = None
@@ -92,123 +94,152 @@ def downloadMFY():
     wait = WebDriverWait(driver, 10)
     time.sleep(10)
 
-    # Grab the start date input box
-    start_date = wait.until(EC.element_to_be_clickable((
-        By.CSS_SELECTOR, "#app > div.noprinting > div > div.hierarchy-searchbar-wrapper > div.date-select-bar > div:nth-child(2) > div:nth-child(1) > div > div > div.dx-texteditor-input-container > input"
-    )))
+    # for i in range(0, 7):
+    for i in range(0, 1): # TODO TESTING DELETE LATER
 
-    date = "12/05/2025" # CHANGE SOON
+        # Grab the start date input box
+        start_date = wait.until(EC.element_to_be_clickable((
+            By.CSS_SELECTOR, "#app > div.noprinting > div > div.hierarchy-searchbar-wrapper > div.date-select-bar > div:nth-child(2) > div:nth-child(1) > div > div > div.dx-texteditor-input-container > input"
+        )))
+        date = f"{12 + i}/05/2025" # CHANGE SOON
 
 
-    # Remove any input already in the box
-    start_date.click()
-    time.sleep(0.05)
-    for i in range(12):
-        start_date.send_keys(Keys.BACKSPACE) 
+        # Remove any input already in the box
+        start_date.click()
         time.sleep(0.05)
-    for i in range(12):
-        start_date.send_keys(Keys.DELETE)
-        time.sleep(0.05)
-    # Type in the selected date
-    for char in date:
-        start_date.send_keys(char)
-        time.sleep(0.05)
-    wait = WebDriverWait(driver, 2)
-    start_date.send_keys(Keys.ENTER)
+        for j in range(12):
+            start_date.send_keys(Keys.BACKSPACE) 
+            time.sleep(0.05)
+        for j in range(12):
+            start_date.send_keys(Keys.DELETE)
+            time.sleep(0.05)
+        # Type in the selected date
+        for char in date:
+            start_date.send_keys(char)
+            time.sleep(0.05)
+        wait = WebDriverWait(driver, 2)
+        start_date.send_keys(Keys.ENTER)
 
-    
-    wait = WebDriverWait(driver, 5)
-    # Grab the end date input box
-    end_date = wait.until(EC.element_to_be_clickable((
-        By.CSS_SELECTOR, "#app > div.noprinting > div > div.hierarchy-searchbar-wrapper > div.date-select-bar > div:nth-child(2) > div:nth-child(2) > div > div > div.dx-texteditor-input-container > input"
-    )))
-    
-    
-    # Remove any input already in the box
-    end_date.click()
-    end_date.send_keys(Keys.ENTER)
-    time.sleep(0.05)
-    for i in range(12):
-        end_date.send_keys(Keys.BACKSPACE)
+        
+        wait = WebDriverWait(driver, 5)
+        # Grab the end date input box
+        end_date = wait.until(EC.element_to_be_clickable((
+            By.CSS_SELECTOR, "#app > div.noprinting > div > div.hierarchy-searchbar-wrapper > div.date-select-bar > div:nth-child(2) > div:nth-child(2) > div > div > div.dx-texteditor-input-container > input"
+        )))
+        
+        
+        # Remove any input already in the box
+        end_date.click()
+        end_date.send_keys(Keys.ENTER)
         time.sleep(0.05)
-    for i in range(12):
-        end_date.send_keys(Keys.DELETE)
-        time.sleep(0.05)
-    # Type in the selected date
-    for char in date:
-        end_date.send_keys(char)
-        time.sleep(0.05)
-    end_date.send_keys(Keys.ENTER)
+        for j in range(12):
+            end_date.send_keys(Keys.BACKSPACE)
+            time.sleep(0.05)
+        for j in range(12):
+            end_date.send_keys(Keys.DELETE)
+            time.sleep(0.05)
+        # Type in the selected date
+        for char in date:
+            end_date.send_keys(char)
+            time.sleep(0.05)
+        end_date.send_keys(Keys.ENTER)
 
-    # Find and click the "go" button
-    go_button = wait.until(EC.element_to_be_clickable((
-        By.CSS_SELECTOR, "div[role='button'][aria-label='Go'].dx-button"
-    )))
-    go_button.click()
-    
-    # Wait for page to load.
-    wait = WebDriverWait(driver, 5)
-    time.sleep(5)
+        # Find and click the "go" button
+        go_button = wait.until(EC.element_to_be_clickable((
+            By.CSS_SELECTOR, "div[role='button'][aria-label='Go'].dx-button"
+        )))
+        go_button.click()
+        
+        # Wait for page to load.
+        wait = WebDriverWait(driver, 5)
+        time.sleep(5)
 
-    # Save the current window, the next input will open another tab.
-    original_window = driver.current_window_handle
+        # Save the current window, the next input will open another tab.
+        original_window = driver.current_window_handle
 
-    # Click the link for the Advance Drill Thru Info
-    day_link = driver.find_element(By.XPATH, "//a[text()='Day']")
-    driver.execute_script("arguments[0].click();", day_link)
+        # Click the link for the Advance Drill Thru Info
+        day_link = driver.find_element(By.XPATH, "//a[text()='Day']")
+        driver.execute_script("arguments[0].click();", day_link)
 
-    # Wait for the second tab to load
-    wait = WebDriverWait(driver, 10)
-    time.sleep(10)
-    WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
+        # Wait for the second tab to load
+        wait = WebDriverWait(driver, 10)
+        time.sleep(10)
+        WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
+
+        # Switch to the new tab
+        for handle in driver.window_handles:
+            if handle != original_window:
+                driver.switch_to.window(handle)
+                break
+
+        # Scroll to the bottom of the page
+        wait = WebDriverWait(driver, 15)
+        time.sleep(15)
+        driver.execute_script("window.scrollBy(0, 500);")
+        wait = WebDriverWait(driver, 2)
+        time.sleep(2)
+
+        # Expand the information on the page (really only needed for thursday/friday but better to be consistent (im lazy))
+        all_button = wait.until(EC.element_to_be_clickable((
+            By.XPATH, "//div[@role='button' and contains(@aria-label, 'Items per page') and text()='All']"
+        )))
+        all_button.click()
+
+        wait = WebDriverWait(driver, 5)
+        time.sleep(5)
+
+        # Open the already coded web scraper
+        with open("discord_bot/scrape_utils.js", "r") as file:
+            scrape_js = file.read()
+        driver.execute_script(scrape_js)
+
+        # Run the scraper script
+        driver.execute_script("findMFY();")
+        result = driver.execute_script("return window.extractedMFY;")
+        print(result)
+        write_mfy(result["date"], "test", result["data"])
+
+        driver.close()
+        driver.switch_to.window(original_window)
+
+        wait = WebDriverWait(driver, 10)
+        time.sleep(10)
+
+        # END FOR
+
+    # Continue in the same window.
+    return driver
+
+def downloadRoster(driver):
+    driver.get("https://myrestaurant.mcdonalds.com.au/Restaurant/1036/Home")
 
     # Switch to the new tab
+    original_window = driver.current_window_handle
     for handle in driver.window_handles:
         if handle != original_window:
-            driver.switch_to.window(handle)
+            driver.close()
+            driver.switch_to.window(original_window)
             break
 
-    # Scroll to the bottom of the page
-    driver.execute_script("window.scrollBy(0, 500);")
     wait = WebDriverWait(driver, 5)
     time.sleep(5)
 
-    # Expand the information on the page (really only needed for thursday/friday but better to be consistent (im lazy))
-    all_button = wait.until(EC.element_to_be_clickable((
-        By.XPATH, "//div[@role='button' and contains(@aria-label, 'Items per page') and text()='All']"
-    )))
-    all_button.click()
+    reports = driver.find_element(By.XPATH, "//*[@id='reports-menu']/a")
+    driver.execute_script("arguments[0].click();", reports)
 
     wait = WebDriverWait(driver, 5)
     time.sleep(5)
+    linebar_reports = driver.find_element(By.XPATH, '//*[@id="content"]/div/section[3]/div/div[2]/div[1]/a')
+    driver.execute_script("arguments[0].click();", linebar_reports)
+    
 
-    # Open the already coded web scraper
-    with open("discord_bot/scrape_utils.js", "r") as file:
-        scrape_js = file.read()
-    driver.execute_script(scrape_js)
-
-    # Run the scraper script
-    driver.execute_script("findMFY();")
-
-    result = driver.execute_script("return window.extractedMFY;")
-    print(result)
-    write_mfy(result["date"], "test", result["data"])
-
-    time.sleep(100)
-
-    driver.close()
-
-def openRosterWebsite():
-    # TODO
-    pass
-
-def downloadRoster():
-    # TODO
-    pass
+    
+    
 
 def main():
     #openMFYWebsite()
-    downloadMFY()
+    driver = downloadMFY()
+    downloadRoster(driver)
 
 def save_last_message_location(message):
     with open("discord_bot/last_message_location.json", "w") as f:
@@ -241,7 +272,7 @@ async def send_messages():
             if channel_id is not None:
                 channel = client.get_channel(channel_id)
                 if channel:
-                    await channel.send(f"<@{ZRANQA_ID}> waiting for code!")
+                    await channel.send(f"<@{ZRANQA_ID}> waiting for code! **Please make sure it is a NEW code**")
         await asyncio.sleep(2)
         
 
