@@ -32,14 +32,11 @@ PASSWORD = os.getenv("PASSWORD")
 
 ZRANQA_ID = 663195676330557459
 
-#Test
-
-
 mfa_code = None
 waiting_for_mfa = False
 ask_for_code = False
 
-def downloadMFY():
+def downloadMFY(date):
     # Create a webdriver and open the EOPS website
     driver = webdriver.Chrome()
     driver.get("https://eops.mcdonalds.com.au/Snap")
@@ -95,13 +92,15 @@ def downloadMFY():
     time.sleep(10)
 
     # for i in range(0, 7):
-    for i in range(0, 1): # TODO TESTING DELETE LATER
+    for i in range(6, -1, -1):
 
         # Grab the start date input box
         start_date = wait.until(EC.element_to_be_clickable((
             By.CSS_SELECTOR, "#app > div.noprinting > div > div.hierarchy-searchbar-wrapper > div.date-select-bar > div:nth-child(2) > div:nth-child(1) > div > div > div.dx-texteditor-input-container > input"
         )))
-        date = f"{12 + i}/05/2025" # CHANGE SOON
+
+        new_date = date.split("/")
+        new_date = f"{int(new_date[0]) - i}/{new_date[1]}/{new_date[2]}"
 
 
         # Remove any input already in the box
@@ -114,7 +113,7 @@ def downloadMFY():
             start_date.send_keys(Keys.DELETE)
             time.sleep(0.05)
         # Type in the selected date
-        for char in date:
+        for char in new_date:
             start_date.send_keys(char)
             time.sleep(0.05)
         wait = WebDriverWait(driver, 2)
@@ -139,7 +138,7 @@ def downloadMFY():
             end_date.send_keys(Keys.DELETE)
             time.sleep(0.05)
         # Type in the selected date
-        for char in date:
+        for char in new_date:
             end_date.send_keys(char)
             time.sleep(0.05)
         end_date.send_keys(Keys.ENTER)
@@ -199,6 +198,9 @@ def downloadMFY():
         print(result)
         write_mfy(result["date"], "test", result["data"])
 
+
+
+
         driver.close()
         driver.switch_to.window(original_window)
 
@@ -210,7 +212,7 @@ def downloadMFY():
     # Continue in the same window.
     return driver
 
-def downloadRoster(driver):
+def downloadRoster(date, driver):
     driver.get("https://myrestaurant.mcdonalds.com.au/Restaurant/1036/Home")
 
     # Switch to the new tab
@@ -233,13 +235,33 @@ def downloadRoster(driver):
     driver.execute_script("arguments[0].click();", linebar_reports)
     
 
+    # Week ending date
+    week_ending_date = wait.until(EC.element_to_be_clickable((
+        By.CSS_SELECTOR, "#date"
+    )))
+    
+    week_ending_date.click()
+    week_ending_date.send_keys(Keys.ENTER)
+    time.sleep(0.05)
+    for i in range(12):
+        week_ending_date.send_keys(Keys.BACKSPACE)
+        time.sleep(0.05)
+    for i in range(12):
+        week_ending_date.send_keys(Keys.DELETE)
+        time.sleep(0.05)
+    # Type in the selected date
+    for char in date:
+        week_ending_date.send_keys(char)
+        time.sleep(0.05)
+    week_ending_date.send_keys(Keys.ENTER)
     
     
 
 def main():
     #openMFYWebsite()
-    driver = downloadMFY()
-    downloadRoster(driver)
+    date = "18/05/2025"
+    driver = downloadMFY(date)
+    downloadRoster(date, driver)
 
 def save_last_message_location(message):
     with open("discord_bot/last_message_location.json", "w") as f:
