@@ -446,7 +446,13 @@ async def on_message(message):
     if message.author == client.user:
         return
     elif message.author.id == ZRANQA_ID:
-        if message.content.startswith("!!code"):
+        if message.content.startswith("!!help"):
+            message_to_send = f"""```Welcome to MFY Bot! Here are a list of commands:\n
+!!code [code] -> Sends the MFA code to the discord bot
+!!calculate OR !!cal [YY-MM-DD] -> Calculates the scores for the given weeks
+!!data -> Outputs all of the current weekly data```"""
+            await message.channel.send(message_to_send)
+        elif message.content.startswith("!!code"):
             await message.channel.send("Code recieved")
 
             global waiting_for_mfa
@@ -467,7 +473,7 @@ async def on_message(message):
                 
             else:
                 await message.channel.send("Program does not need code yet.")
-        elif message.content.startswith("!!calculate"):
+        elif message.content.startswith("!!calculate") or message.content.startswith("!!cal") :
             message_input = message.content.split(" ")
             if len(message_input) > 1:
                 if len(message_input[1]) == 8:
@@ -484,9 +490,14 @@ async def on_message(message):
                                 found_date = True
                                 break
                         if not found_date:
-                            await message.channel.send("Date not found.")
+                            await message.channel.send("Date not found (try !!data).")
                     except:
                         pass
+                else:
+                    await message.channel.send("Incorrect input, must be in format (or try !!data): [YY-MM-DD].")
+            else:
+                await message.channel.send("Incorrect input, a date [YY-MM-DD] is required.")
+            
         elif message.content.startswith("!!data"):
             date_list = os.listdir('data')
             date_message = "```Weeks:\n\n"
