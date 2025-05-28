@@ -21,6 +21,7 @@ import threading
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'manual')))
 import make_folders
+import manual_calculation
 
 
 
@@ -41,6 +42,9 @@ ZRANQA_ID = 663195676330557459
 mfa_code = None
 waiting_for_mfa = False
 ask_for_code = False
+
+total_mfy_data = None
+send_last_mfy = False
 
 
 def write_json(filename: str, week: str, data: list):
@@ -217,8 +221,8 @@ def downloadMFY(date: str):
         driver.close()
         driver.switch_to.window(original_window)
 
-        wait = WebDriverWait(driver, 10)
-        time.sleep(10)
+        wait = WebDriverWait(driver, 15)
+        time.sleep(15)
 
         # END FOR
 
@@ -312,7 +316,6 @@ def downloadRoster(date: str, driver: webdriver.Chrome):
 
     driver.close()
     
-
 def find_last_folder_date(day: int, month: int, year: int):
     year = int(str(datetime.date.today().year)[-2:])
     day = f"{datetime.date.today().day:02}"
@@ -364,6 +367,7 @@ def get_next_date(last_date: str) -> str:
 def main():
 
     date, day_difference = find_last_folder_date(datetime.date.today().day, datetime.date.today().month, datetime.date.today().year)
+    global total_mfy_data
 
     if day_difference > 7:
         os.makedirs(f"data/{make_folders.get_next_date(date)}")
@@ -371,13 +375,23 @@ def main():
         driver = downloadMFY(date)
         downloadRoster(date, driver)
 
-
         print("CALUCLATE NOW!!")
+        total_mfy_data = manual_calculation.calculate_data(date)
+        manual_calculation.print_data(total_mfy_data)
         print("COMMIT THE DATA TO REPOSITORY")
         # TODO also create bot command to get data
     else:
         print(f"not enough days between last day and current day: {day_difference}")
 
+        
+    date = os.listdir('data')[-1]
+    total_mfy_data = manual_calculation.calculate_data(date)
+    manual_calculation.print_data(total_mfy_data)
+
+    time.sleep(5)
+
+    global send_last_mfy
+    send_last_mfy = True
 
 def save_last_message_location(message):
     with open("discord_bot/last_message_location.json", "w") as f:
@@ -404,8 +418,22 @@ async def send_messages():
                 channel = client.get_channel(channel_id)
                 if channel:
                     await channel.send(f"<@{ZRANQA_ID}> waiting for code! **Please make sure it is a NEW code**")
-        await asyncio.sleep(2)
+
+        global send_last_mfy
+        global total_mfy_data
+        if send_last_mfy:
+            send_last_mfy = False
+            channel_id = load_last_message_location()
+            if channel_id is not None:
+                channel = client.get_channel(channel_id)
+                if channel:
+                    mfy_message = "```Rankings:\n\n"
+                    for i in range(0, len(total_mfy_data)):
+                        mfy_message += f"{i+1}.\t{total_mfy_data[i]["name"]}: {total_mfy_data[i]["mfy_average"]}\n"
+                    mfy_message += "```"
+                    await channel.send(mfy_message)
         
+        await asyncio.sleep(1)
 
 
 @client.event
@@ -439,7 +467,34 @@ async def on_message(message):
                 
             else:
                 await message.channel.send("Program does not need code yet.")
-        
+        elif message.content.startswith("!!calculate"):
+            message_input = message.content.split(" ")
+            if len(message_input) > 1:
+                if len(message_input[1]) == 8:
+                    try:
+                        input_date = message_input[1].replace("/", "-")
+                        date_list = os.listdir('data')
+                        found_date = False
+                        for i in date_list:
+                            if i == input_date:
+                                global total_mfy_data
+                                global send_last_mfy
+                                total_mfy_data = manual_calculation.calculate_data(input_date)
+                                send_last_mfy = True
+                                found_date = True
+                                break
+                        if not found_date:
+                            await message.channel.send("Date not found.")
+                    except:
+                        pass
+        elif message.content.startswith("!!data"):
+            date_list = os.listdir('data')
+            date_message = "```Weeks:\n\n"
+            for i in date_list:
+                date_message += f"{i}\n"
+            date_message += "```"
+            await message.channel.send(date_message)
+
         save_last_message_location(message)
     elif valid_code(message):
         await message.channel.send("Bro is NOT zRanqa, get lost bozo")

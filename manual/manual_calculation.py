@@ -30,9 +30,9 @@ def getRosterFromDate(date: str):
     f.close()
     return roster_data
 
-def getMFYFromDate(date: str):
+def getMFYFromDate(date: str, folder_date: str):
     mfyData = date.split('-')
-    f = open(f'data/{DATE}/{mfyData[2]}-MFY.json', "r")
+    f = open(f'data/{folder_date}/{mfyData[2]}-MFY.json', "r")
     mfyData = json.loads(f.read())
     f.close()
     return mfyData
@@ -88,51 +88,84 @@ def checkWorkersInHour(roster, i, mfy, j):
                 swapIndex += 1
     return foundList
 
-DATE = input("Please enter week ending date to generate MFY averages, e.g(25-03-16):\n")
+def calculate_data(date: str) -> list[dict[str, int]]:
+    """
+    Returns the calculated data of everyone mfy times in the week given
 
-data_folder_list = os.listdir('data')
-found = False
-for i in range(0, len(data_folder_list)):
-    if data_folder_list[i] == DATE:
-        found = True
-        print("Date Found")
+    Each dictionary in the returned list contains:
+      - name (str): The name or identifier
+      - mfy_total (int): The total value
+      - mfy_count (int): The number of items counted
+      - mfy_average (int): The average value
 
-if not found:
-    print("Date Not Found")
-    quit()
+    @param date: The week ending date string in the format 'YY-MM-DD'.
+    @return: A list of dicts summarising variables.
+    """
+    roster = getRosterFromDate(date)
+    total_mfy_data = createTemplateData(roster)
+    # Start main Algorithm
 
-roster = getRosterFromDate(DATE)
-total_mfy_data = createTemplateData(roster)
+    for i in range(0, len(roster)):
+        mfy = getMFYFromDate(roster[i]["date"], date)
+        for j in range(0, len(mfy)):
+            workersInHour = checkWorkersInHour(roster, i, mfy, j)
+            for k in range(0, len(roster[i]["data"])):
+                if (int(roster[i]["data"][k]["start"]) <= int(mfy[j]["start"])) and (int(roster[i]["data"][k]["end"]) >= int(mfy[j]["end"])):
+                    if workersInHour[0] > 2:
+                        if roster[i]["data"][k]["name"] != workersInHour[1] and roster[i]["data"][k]["name"] != workersInHour[2]:
+                            continue
+                    for l in range(0,len(total_mfy_data)):
+                        if (roster[i]["data"][k]["name"] == total_mfy_data[l]["name"]):
+                            total_mfy_data[l]["mfy_total"] += int(mfy[j]["MFY"])
+                            total_mfy_data[l]["mfy_count"] += 1
+
+    pop_indexs = []
+    for i in range(0, len(total_mfy_data)):
+        if total_mfy_data[i]["mfy_total"] == 0 or total_mfy_data[i]["mfy_count"] == 0:
+            pop_indexs.append(i)
+        else:
+            total_mfy_data[i]["mfy_average"] = round(total_mfy_data[i]["mfy_total"] / total_mfy_data[i]["mfy_count"])
+            
+    for i in range(len(pop_indexs)):
+        total_mfy_data.pop(pop_indexs[i] - i)
+
+    total_mfy_data = sortByAverage(total_mfy_data)
+
+    return total_mfy_data
+
+def print_data(total_mfy_data: list[dict[str, int]]):
+    print("\nRankings:")
+    for i in range(0, len(total_mfy_data)):
+        print(f"{i+1}.\t{total_mfy_data[i]["name"]}: {total_mfy_data[i]["mfy_average"]}")
 
 
 
-# Start main Algorithm
-for i in range(0, len(roster)):
-    mfy = getMFYFromDate(roster[i]["date"])
-    for j in range(0, len(mfy)):
-        workersInHour = checkWorkersInHour(roster, i, mfy, j)
-        for k in range(0, len(roster[i]["data"])):
-            if (int(roster[i]["data"][k]["start"]) <= int(mfy[j]["start"])) and (int(roster[i]["data"][k]["end"]) >= int(mfy[j]["end"])):
-                if workersInHour[0] > 2:
-                    if roster[i]["data"][k]["name"] != workersInHour[1] and roster[i]["data"][k]["name"] != workersInHour[2]:
-                        continue
-                for l in range(0,len(total_mfy_data)):
-                    if (roster[i]["data"][k]["name"] == total_mfy_data[l]["name"]):
-                        total_mfy_data[l]["mfy_total"] += int(mfy[j]["MFY"])
-                        total_mfy_data[l]["mfy_count"] += 1
+if __name__ == "__main__":
+    date = input("Please enter week ending date to generate MFY averages, e.g(25-03-16):\n")
+
+    data_folder_list = os.listdir('data')
+    found = False
+    for i in range(0, len(data_folder_list)):
+        if data_folder_list[i] == date:
+            found = True
+            print("Date Found")
+
+    if not found:
+        print("Date Not Found")
+        quit()
+
+    total_mfy_data = calculate_data(date)
+
+    print_data(total_mfy_data)
 
 
 
 
 
-for i in range(0, len(total_mfy_data)):
-    if total_mfy_data[i]["mfy_total"] == 0 or total_mfy_data[i]["mfy_count"] == 0:
-        total_mfy_data[i]["mfy_average"] = 0
-    else:
-        total_mfy_data[i]["mfy_average"] = round(total_mfy_data[i]["mfy_total"] / total_mfy_data[i]["mfy_count"])
 
-total_mfy_data = sortByAverage(total_mfy_data)
 
-print("\nRankings:")
-for i in range(0, len(total_mfy_data)):
-    print(f"{i+1}.\t{total_mfy_data[i]["name"]}: {total_mfy_data[i]["mfy_average"]}")
+
+
+
+
+
