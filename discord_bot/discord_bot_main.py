@@ -18,6 +18,12 @@ import asyncio
 from _thread import *
 import threading
 
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'manual')))
+import make_folders
+
+
+
 intents = discord.Intents().all()
 client = discord.Client(intents=intents)
 
@@ -360,7 +366,7 @@ def main():
     date, day_difference = find_last_folder_date(datetime.date.today().day, datetime.date.today().month, datetime.date.today().year)
 
     if day_difference > 7:
-        os.makedirs(f"data/{get_next_date(date)}")
+        os.makedirs(f"data/{make_folders.get_next_date(date)}")
         date = os.listdir('data')[-1]
         driver = downloadMFY(date)
         downloadRoster(date, driver)
@@ -370,8 +376,7 @@ def main():
         print("COMMIT THE DATA TO REPOSITORY")
         # TODO also create bot command to get data
     else:
-        print("not enough days between last day and current day")
-        print(day_difference)
+        print(f"not enough days between last day and current day: {day_difference}")
 
 
 def save_last_message_location(message):
