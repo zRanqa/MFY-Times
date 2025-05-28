@@ -9,8 +9,7 @@ import time
 import json
 from dotenv import load_dotenv
 import os
-
-load_dotenv()
+import datetime
 
 import discord
 from discord.utils import get
@@ -19,12 +18,13 @@ import asyncio
 from _thread import *
 import threading
 
-
 intents = discord.Intents().all()
 client = discord.Client(intents=intents)
 
 MFY_WEBSITE = "https://eops.mcdonalds.com.au/Snap"
 ROSTER_WEBSITE = "https://myrestaurant.mcdonalds.com.au/Restaurant/1036/Home"
+
+load_dotenv()
 
 TOKEN = os.getenv("TOKEN")
 USERNAME = os.getenv("EMAIL")
@@ -36,7 +36,13 @@ mfa_code = None
 waiting_for_mfa = False
 ask_for_code = False
 
-def downloadMFY(date):
+
+def write_json(filename: str, week: str, data: list):
+    file_path = os.path.join(f"data/{week}", filename)
+    with open(file_path, "w") as f:
+        json.dump(data, f, indent=2)
+
+def downloadMFY(date: str):
     # Create a webdriver and open the EOPS website
     driver = webdriver.Chrome()
     driver.get("https://eops.mcdonalds.com.au/Snap")
@@ -91,7 +97,6 @@ def downloadMFY(date):
     wait = WebDriverWait(driver, 10)
     time.sleep(10)
 
-    # for i in range(0, 7):
     for i in range(6, -1, -1):
 
         # Grab the start date input box
@@ -99,8 +104,8 @@ def downloadMFY(date):
             By.CSS_SELECTOR, "#app > div.noprinting > div > div.hierarchy-searchbar-wrapper > div.date-select-bar > div:nth-child(2) > div:nth-child(1) > div > div > div.dx-texteditor-input-container > input"
         )))
 
-        new_date = date.split("/")
-        new_date = f"{int(new_date[0]) - i}/{new_date[1]}/{new_date[2]}"
+        new_date = date.split("-")
+        new_date = f"{int(new_date[2]) - i}/{new_date[1]}/20{new_date[0]}"
 
 
         # Remove any input already in the box
@@ -196,7 +201,9 @@ def downloadMFY(date):
         driver.execute_script("findMFY();")
         result = driver.execute_script("return window.extractedMFY;")
         print(result)
-        write_mfy(result["date"], "test", result["data"])
+        # write_mfy(result["date"], "test", result["data"])
+        file_name = f"{result["date"]}-MFY.json"
+        write_json(file_name, date, result["data"])
 
 
 
@@ -212,7 +219,7 @@ def downloadMFY(date):
     # Continue in the same window.
     return driver
 
-def downloadRoster(date, driver):
+def downloadRoster(date: str, driver: webdriver.Chrome):
     driver.get("https://myrestaurant.mcdonalds.com.au/Restaurant/1036/Home")
 
     # Switch to the new tab
@@ -231,9 +238,16 @@ def downloadRoster(date, driver):
 
     wait = WebDriverWait(driver, 5)
     time.sleep(5)
+
     linebar_reports = driver.find_element(By.XPATH, '//*[@id="content"]/div/section[3]/div/div[2]/div[1]/a')
     driver.execute_script("arguments[0].click();", linebar_reports)
     
+    wait = WebDriverWait(driver, 5)
+    time.sleep(5)
+
+    
+    new_date = date.split("-")
+    new_date = f"{new_date[2]}/{new_date[1]}/{new_date[0]}"
 
     # Week ending date
     week_ending_date = wait.until(EC.element_to_be_clickable((
@@ -250,18 +264,111 @@ def downloadRoster(date, driver):
         week_ending_date.send_keys(Keys.DELETE)
         time.sleep(0.05)
     # Type in the selected date
-    for char in date:
+    for char in new_date:
         week_ending_date.send_keys(char)
         time.sleep(0.05)
-    week_ending_date.send_keys(Keys.ENTER)
+        
+    header = driver.find_element(By.ID, "main-menu")
+    header.click()
     
+    week_ending_date.send_keys(Keys.ENTER)
+    # week_ending_date.send_keys(Keys.ENTER)
+
+    table = driver.find_element(By.CLASS_NAME, "ui-datepicker-calendar")
+    day_to_find = date.split('-')[2]
+    clickable_dates = table.find_elements(By.CSS_SELECTOR, 'td a.ui-state-default')
+
+    # Loop through and click the one with the same day
+    for day in clickable_dates:
+        if day.text.strip() == day_to_find:
+            day.click()
+            break
+
+    wait = WebDriverWait(driver, 5)
+    time.sleep(5)
+
+    show_report = driver.find_element(By.XPATH, '//*[@id="roster-linebars-report-options"]/div[1]/button')
+    show_report.click()
+    
+    wait = WebDriverWait(driver, 10)
+    time.sleep(10)
+
+    with open("discord_bot/scrape_utils.js", "r") as file:
+        scrape_js = file.read()
+    driver.execute_script(scrape_js)
+
+    # Run the scraper script
+    driver.execute_script("findRosters();")
+    result = driver.execute_script("return window.extractedRoster;")
+    print(result)
+    
+    write_json("roster.json", date, result)
+
+    driver.close()
     
 
+def find_last_folder_date(day: int, month: int, year: int):
+    year = int(str(datetime.date.today().year)[-2:])
+    day = f"{datetime.date.today().day:02}"
+    month = f"{datetime.date.today().month:02}"
+
+    days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    day_difference = 0
+
+    last_folder_date = os.listdir('data')[-1]
+    current_folder_date = f"{year}-{month}-{day}"
+
+    print(last_folder_date)
+
+    while last_folder_date != current_folder_date and day_difference <= 14:
+        date = current_folder_date.split("-")
+        day = int(date[2])
+        month = int(date[1])
+        year = int(date[0])
+        day -= 1
+        if day <= 0:
+            month -= 1
+            if month <= 0:
+                year -= 1
+                month = 12
+            day = days_in_month[month-1]
+
+        day = f"{day:02}"
+        month = f"{month:02}"
+
+        current_folder_date = f"{year}-{month}-{day}"
+        day_difference += 1
+
+
+    return last_folder_date, day_difference
+
+def get_next_date(last_date: str) -> str:
+    days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    [year, month, day] = last_date.split('-')
+    year, month, day = int(year), int(month), int(day)
+    day += 7
+    if day > days_in_month[month-1]:
+        day -= days_in_month[month-1]
+        month += 1
+    if month > 12:
+        month = 1
+        year += 1
+    return f"{year:02}-{month:02}-{day:02}"
+
 def main():
-    #openMFYWebsite()
-    date = "18/05/2025"
-    driver = downloadMFY(date)
-    downloadRoster(date, driver)
+
+    date, day_difference = find_last_folder_date(datetime.date.today().day, datetime.date.today().month, datetime.date.today().year)
+
+    if day_difference > 7:
+        os.makedirs(f"data/{get_next_date(date)}")
+        date = os.listdir('data')[-1]
+        driver = downloadMFY(date)
+        downloadRoster(date, driver)
+    else:
+        print("not enough days between last day and current day")
+        print(day_difference)
+
+    print("CALUCLATE NOW!!")
 
 def save_last_message_location(message):
     with open("discord_bot/last_message_location.json", "w") as f:
@@ -276,13 +383,6 @@ def load_last_message_location():
 
 def valid_code(message):
     return message.content.startswith(("!!code", "!!other_code"))
-
-def write_mfy(date: str, week: str, data: list):
-    file_name = f"{date}-MFY.json"
-    file_path = os.path.join(f"data/{week}", file_name)
-
-    with open(file_path, "w") as f:
-        json.dump(data, f, indent=2)
 
 
 async def send_messages():
