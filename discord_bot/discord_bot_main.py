@@ -364,12 +364,15 @@ def main():
         date = os.listdir('data')[-1]
         driver = downloadMFY(date)
         downloadRoster(date, driver)
+
+
+        print("CALUCLATE NOW!!")
+        print("COMMIT THE DATA TO REPOSITORY")
+        # TODO also create bot command to get data
     else:
         print("not enough days between last day and current day")
         print(day_difference)
 
-    print("CALUCLATE NOW!!")
-    print("COMMIT THE DATA TO REPOSITORY")
 
 def save_last_message_location(message):
     with open("discord_bot/last_message_location.json", "w") as f:
