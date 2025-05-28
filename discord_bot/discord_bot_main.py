@@ -327,8 +327,6 @@ def find_last_folder_date(day: int, month: int, year: int):
     last_folder_date = os.listdir('data')[-1]
     current_folder_date = f"{year}-{month}-{day}"
 
-    print(last_folder_date)
-
     while last_folder_date != current_folder_date and day_difference <= 14:
         date = current_folder_date.split("-")
         day = int(date[2])
@@ -375,13 +373,10 @@ def main():
         driver = downloadMFY(date)
         downloadRoster(date, driver)
 
-        print("CALUCLATE NOW!!")
         total_mfy_data = manual_calculation.calculate_data(date)
         manual_calculation.print_data(total_mfy_data)
-        print("COMMIT THE DATA TO REPOSITORY")
-        # TODO also create bot command to get data
-    else:
-        print(f"not enough days between last day and current day: {day_difference}")
+        # TODO "COMMIT THE DATA TO REPOSITORY"
+        # TODO MAKE THIS LOOPING SO I CAN RUN THIS ON LINUX OCMPUTER
 
 
 def save_last_message_location(message):
