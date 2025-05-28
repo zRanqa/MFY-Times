@@ -369,6 +369,7 @@ def main():
         print(day_difference)
 
     print("CALUCLATE NOW!!")
+    print("COMMIT THE DATA TO REPOSITORY")
 
 def save_last_message_location(message):
     with open("discord_bot/last_message_location.json", "w") as f:
