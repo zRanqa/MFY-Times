@@ -383,15 +383,6 @@ def main():
     else:
         print(f"not enough days between last day and current day: {day_difference}")
 
-        
-    date = os.listdir('data')[-1]
-    total_mfy_data = manual_calculation.calculate_data(date)
-    manual_calculation.print_data(total_mfy_data)
-
-    time.sleep(5)
-
-    global send_last_mfy
-    send_last_mfy = True
 
 def save_last_message_location(message):
     with open("discord_bot/last_message_location.json", "w") as f:
