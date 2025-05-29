@@ -25,17 +25,23 @@ WEIGHTED_LINE_LIST = [
 ]
 
 def getRosterFromDate(date: str):
-    f = open(f'data/{date}/roster.json', "r")
-    roster_data = json.loads(f.read())
-    f.close()
-    return roster_data
+    try:
+        f = open(f'data/{date}/roster.json', "r")
+        roster_data = json.loads(f.read())
+        f.close()
+        return roster_data
+    except:
+        return False
 
 def getMFYFromDate(date: str, folder_date: str):
-    mfyData = date.split('-')
-    f = open(f'data/{folder_date}/{mfyData[2]}-MFY.json', "r")
-    mfyData = json.loads(f.read())
-    f.close()
-    return mfyData
+    try:
+        mfyData = date.split('-')
+        f = open(f'data/{folder_date}/{mfyData[2]}-MFY.json', "r")
+        mfyData = json.loads(f.read())
+        f.close()
+        return mfyData
+    except:
+        return False
 
 def sortByAverage(dataList):
     for i in range(0,len(dataList)):
@@ -70,23 +76,26 @@ def createTemplateData(roster):
 
 
 def checkWorkersInHour(roster, i, mfy, j):
-    # foundLIST index 0 = count
-    foundList = [0]
-    for k in range(0, len(roster[i]["data"])):
-        if (int(roster[i]["data"][k]["start"]) <= int(mfy[j]["start"])) and (int(roster[i]["data"][k]["end"]) >= int(mfy[j]["end"])):
-            foundList.append(roster[i]["data"][k]["name"])
-            foundList[0] += 1
+    try:
+        # foundLIST index 0 = count
+        foundList = [0]
+        for k in range(0, len(roster[i]["data"])):
+            if (int(roster[i]["data"][k]["start"]) <= int(mfy[j]["start"])) and (int(roster[i]["data"][k]["end"]) >= int(mfy[j]["end"])):
+                foundList.append(roster[i]["data"][k]["name"])
+                foundList[0] += 1
 
-    # Sort in order from WEIGHTED_LINE_LIST
-    swapIndex = 1
-    for k in range(0, len(WEIGHTED_LINE_LIST)):
-        for l in range(swapIndex, len(foundList)):
-            if WEIGHTED_LINE_LIST[k] == foundList[l]:
-                temp = foundList[swapIndex]
-                foundList[swapIndex] = foundList[l]
-                foundList[l] = temp
-                swapIndex += 1
-    return foundList
+        # Sort in order from WEIGHTED_LINE_LIST
+        swapIndex = 1
+        for k in range(0, len(WEIGHTED_LINE_LIST)):
+            for l in range(swapIndex, len(foundList)):
+                if WEIGHTED_LINE_LIST[k] == foundList[l]:
+                    temp = foundList[swapIndex]
+                    foundList[swapIndex] = foundList[l]
+                    foundList[l] = temp
+                    swapIndex += 1
+        return foundList
+    except:
+        return False
 
 def calculate_data(date: str) -> list[dict[str, int]]:
     """
@@ -97,41 +106,55 @@ def calculate_data(date: str) -> list[dict[str, int]]:
       - mfy_total (int): The total value
       - mfy_count (int): The number of items counted
       - mfy_average (int): The average value
+    
+    This function will return:
+      - True/False, if the function passed
+      - String Message, displays what caused the function to fail
+      - Dictionary, list of the mfy data, will be empty if failed.
 
     @param date: The week ending date string in the format 'YY-MM-DD'.
-    @return: A list of dicts summarising variables.
     """
     roster = getRosterFromDate(date)
-    total_mfy_data = createTemplateData(roster)
-    # Start main Algorithm
+    if roster == False:
+        return False, "roster_calc", []
+    
+    try:
+        total_mfy_data = createTemplateData(roster)
+        # Start main Algorithm
 
-    for i in range(0, len(roster)):
-        mfy = getMFYFromDate(roster[i]["date"], date)
-        for j in range(0, len(mfy)):
-            workersInHour = checkWorkersInHour(roster, i, mfy, j)
-            for k in range(0, len(roster[i]["data"])):
-                if (int(roster[i]["data"][k]["start"]) <= int(mfy[j]["start"])) and (int(roster[i]["data"][k]["end"]) >= int(mfy[j]["end"])):
-                    if workersInHour[0] > 2:
-                        if roster[i]["data"][k]["name"] != workersInHour[1] and roster[i]["data"][k]["name"] != workersInHour[2]:
-                            continue
-                    for l in range(0,len(total_mfy_data)):
-                        if (roster[i]["data"][k]["name"] == total_mfy_data[l]["name"]):
-                            total_mfy_data[l]["mfy_total"] += int(mfy[j]["MFY"])
-                            total_mfy_data[l]["mfy_count"] += 1
+        for i in range(0, len(roster)):
+            mfy = getMFYFromDate(roster[i]["date"], date)
+            if mfy == False or mfy == []:
+                return False, "mfy_calc", []
+            for j in range(0, len(mfy)):
+                workersInHour = checkWorkersInHour(roster, i, mfy, j)
+                if workersInHour == False:
+                    return False, "workersinhour", []
+                for k in range(0, len(roster[i]["data"])):
+                    if (int(roster[i]["data"][k]["start"]) <= int(mfy[j]["start"])) and (int(roster[i]["data"][k]["end"]) >= int(mfy[j]["end"])):
+                        if workersInHour[0] > 2:
+                            if roster[i]["data"][k]["name"] != workersInHour[1] and roster[i]["data"][k]["name"] != workersInHour[2]:
+                                continue
+                        for l in range(0,len(total_mfy_data)):
+                            if (roster[i]["data"][k]["name"] == total_mfy_data[l]["name"]):
+                                total_mfy_data[l]["mfy_total"] += int(mfy[j]["MFY"])
+                                total_mfy_data[l]["mfy_count"] += 1
 
-    pop_indexs = []
-    for i in range(0, len(total_mfy_data)):
-        if total_mfy_data[i]["mfy_total"] == 0 or total_mfy_data[i]["mfy_count"] == 0:
-            pop_indexs.append(i)
-        else:
-            total_mfy_data[i]["mfy_average"] = round(total_mfy_data[i]["mfy_total"] / total_mfy_data[i]["mfy_count"])
-            
-    for i in range(len(pop_indexs)):
-        total_mfy_data.pop(pop_indexs[i] - i)
+        pop_indexs = []
+        for i in range(0, len(total_mfy_data)):
+            if total_mfy_data[i]["mfy_total"] == 0 or total_mfy_data[i]["mfy_count"] == 0:
+                pop_indexs.append(i)
+            else:
+                total_mfy_data[i]["mfy_average"] = round(total_mfy_data[i]["mfy_total"] / total_mfy_data[i]["mfy_count"])
+                
+        for i in range(len(pop_indexs)):
+            total_mfy_data.pop(pop_indexs[i] - i)
 
-    total_mfy_data = sortByAverage(total_mfy_data)
-
-    return total_mfy_data
+        total_mfy_data = sortByAverage(total_mfy_data)
+    
+        return True, "", total_mfy_data
+    except:
+        return False, "calculation", []
 
 def print_data(total_mfy_data: list[dict[str, int]]):
     print("\nRankings:")
@@ -154,9 +177,12 @@ if __name__ == "__main__":
         print("Date Not Found")
         quit()
 
-    total_mfy_data = calculate_data(date)
+    passed, message, total_mfy_data = calculate_data(date)
 
-    print_data(total_mfy_data)
+    if passed:
+        print_data(total_mfy_data)
+    else:
+        print(message)
 
 
 
