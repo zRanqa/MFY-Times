@@ -401,7 +401,7 @@ def delete_folder(path):
 def main():
 
     while True:
-        print("Testing date difference")
+        # print("Testing date difference")
 
         date, day_difference = find_last_folder_date(datetime.date.today().day, datetime.date.today().month, datetime.date.today().year)
         global total_mfy_data
@@ -566,12 +566,24 @@ async def on_message(message):
             await message.channel.send("Incorrect input, a date [YY-MM-DD] is required.")
         
     elif message.content.startswith("!!data"):
+        message_input = message.content.split(" ")
         date_list = os.listdir('data')
-        date_message = "```Weeks:\n\n"
-        for i in date_list:
-            date_message += f"{i}\n"
-        date_message += "```"
-        await message.channel.send(date_message)
+        if len(message_input) == 1:
+            date_message = "```Weeks:\n\n"
+            for i in date_list:
+                date_message += f"{i}\n"
+            date_message += "```"
+            await message.channel.send(date_message)
+        else:
+            if len(message_input[1]) == 8:
+                input_date = message_input[1].replace("/", "-")
+                date_message = f"```Files in {input_date}:\n\n"
+                for date in date_list:
+                    if date == input_date:
+                        for file in os.listdir(f'data/{input_date}'):
+                            date_message += f"{file}\n"
+                date_message += "```"
+                await message.channel.send(date_message)
 
     if message.author.id == ZRANQA_ID:
         save_last_message_location(message)
