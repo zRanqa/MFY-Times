@@ -57,6 +57,7 @@ def write_json(filename: str, week: str, data: list):
         json.dump(data, f, indent=2)
 
 def downloadMFY(date: str):
+    days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     global driver
     try:
     # Create a webdriver and open the EOPS website
@@ -122,7 +123,17 @@ def downloadMFY(date: str):
             )))
 
             new_date = date.split("-")
-            new_date = f"{int(new_date[2]) - i}/{new_date[1]}/20{new_date[0]}"
+            day_value = 0
+            month_value = 0
+            if int(new_date[2]) - i > 0:
+                day_value = int(new_date[2]) - i
+                month_value = new_date[1]
+            else:
+                month_index = int(new_date[1]) - 2
+                month_value = int(new_date[1]) - 1
+                day_value = days_in_month[month_index] + int(new_date[2]) - i
+
+            new_date = f"{day_value}/{month_value}/20{new_date[0]}"
 
 
             # Remove any input already in the box
