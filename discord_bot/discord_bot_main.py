@@ -1,5 +1,3 @@
-import webbrowser
-import urllib.request
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
@@ -7,6 +5,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 import json
+import subprocess
 from dotenv import load_dotenv
 import os
 import datetime
@@ -46,7 +45,7 @@ ask_for_code = False
 total_mfy_data = None
 send_last_mfy = False
 
-send_failed = []
+send_message = []
 
 driver = None
 
@@ -242,6 +241,8 @@ def downloadMFY(date: str, day_or_week: str):
                 for window in driver.window_handles:
                     driver.switch_to.window(window)
                     driver.close()
+
+                send_message.append(push_data_to_github())
         return True
     except:
         for window in driver.window_handles:
@@ -337,6 +338,7 @@ def downloadRoster(date: str):
         write_json("roster.json", date, result)
 
         driver.close()
+        send_message.append(push_data_to_github())
         return True
     except:
         for window in driver.window_handles:
@@ -419,21 +421,22 @@ def main():
             mfy_worked = downloadMFY(date, "week")
             roster_worked = downloadRoster(date)
 
-            global send_failed
+            global send_message
             
             if mfy_worked and roster_worked:
                 passed, fail_message, total_mfy_data = manual_calculation.calculate_data(date)
                 if passed:
                     manual_calculation.print_data(total_mfy_data)
+                    send_message.append(push_data_to_github())
                     # TODO "COMMIT THE DATA TO REPOSITORY"
                     # TODO MAKE THIS LOOPING SO I CAN RUN THIS ON LINUX OCMPUTER
                 else:
-                    send_failed.append(fail_message)
+                    send_message.append(fail_message)
             else:
                 if not mfy_worked:
-                    send_failed.append("mfy")
+                    send_message.append("mfy")
                 if not roster_worked:
-                    send_failed.append("roster")
+                    send_message.append("roster")
                 delete_folder(f"data/{date}")
 
         time.sleep(5)
@@ -477,6 +480,17 @@ def is_valid_date(date):
     
     return True, ""
 
+def push_data_to_github():
+    try:
+        subprocess.run(["git", "add", "data/"], check=True)
+        commit_msg = f"Bot data update: {datetime.date.today().isoformat()}"
+        subprocess.run(["git", "commit", "-m", commit_msg], check=True)
+        subprocess.run(["git", "push", "origin", "main"], check=True)
+        return "Data pushed to GitHub successfully."
+    except subprocess.CalledProcessError as e:
+        return f"Git error: {e}"
+
+
 
 async def send_messages():
     while True:
@@ -502,25 +516,28 @@ async def send_messages():
                     mfy_message += "```"
                     await channel.send(mfy_message)
 
-        global send_failed
-        if len(send_failed) > 0:
+        global send_message
+        if len(send_message) > 0:
             if channel_id is not None:
                 channel = client.get_channel(channel_id)
                 if channel:
-                    for failed_message in send_failed:
-                        if failed_message == "mfy":
+                    for message in send_message:
+                        if message == "mfy":
                             await channel.send("ERROR: MFY function crashed unexpectedly")
-                        if failed_message == "roster":
+                        elif message == "roster":
                             await channel.send("ERROR: Roster function crashed unexpectedly")
-                        if failed_message == "mfy_calc":
+                        elif message == "mfy_calc":
                             await channel.send("ERROR: MFY data_grabber function crashed unexpectedly")
-                        if failed_message == "roster_calc":
+                        elif message == "roster_calc":
                             await channel.send("ERROR: Roster Calculation function crashed unexpectedly")
-                        if failed_message == "workersinhour":
+                        elif message == "workersinhour":
                             await channel.send("ERROR: Worker In Hour Calculation function crashed unexpectedly")
-                        if failed_message == "calculation":
+                        elif message == "calculation":
                             await channel.send("ERROR: Total MFY Data Calculation function crashed unexpectedly")
-                    send_failed = []
+                        else:
+                            await channel.send(message)
+
+                    send_message = []
             
         await asyncio.sleep(1)
 
@@ -557,6 +574,7 @@ async def on_message(message):
                 
             else:
                 await message.channel.send("Program does not need code yet.")
+        
         elif message.content.startswith("!!get"):
             message_input = message.content.split(" ")
             if len(message_input) <= 2:
@@ -602,7 +620,10 @@ async def on_message(message):
                     await message.channel.send(f"Getting new MFY Data")
                     thread = threading.Thread(target=downloadMFY, args=(message_input[2], "day"))
                     thread.start()
-            
+
+        elif message.content.startswith("!!push"):
+            await message.channel.send(push_data_to_github())
+
     if message.content.startswith("!!help"):
         message_to_send = f"""```Welcome to MFY Bot! Here are a list of commands:\n
 !!code [code] -> Sends the MFA code to the discord bot
@@ -626,7 +647,7 @@ async def on_message(message):
                             if passed:
                                 send_last_mfy = True
                             else:
-                                send_failed.append(fail_message)
+                                send_message.append(fail_message)
 
                             found_date = True
                             break
