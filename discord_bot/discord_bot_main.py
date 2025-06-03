@@ -691,12 +691,12 @@ async def on_message(message):
 For Jonno Only:
 !!code [code] -> Sends the MFA code to the discord bot.
 !!get [mfy/roster] [date] [y] -> Downloads a specific MFY Day or roster week, the 'Y' is a force re-download.
-!!push -> Pushes the data folder to the main repository.
-!!say -> Stupid command jonno 'had' to make.\n
+!!push -> Pushes the data folder to the main repository.\n
 For Everyone:
 !!help -> Prints out this lovely message :D
 !!calculate OR !!cal [YY-MM-DD] -> Calculates the scores for the given weeks
-!!data -> Outputs all of the current weekly data```"""
+!!data -> Outputs all of the current weekly data
+!!say -> Stupid command jonno 'had' to make.```"""
         await message.channel.send(message_to_send)
 
     elif message.content.startswith("!!calculate") or message.content.startswith("!!cal") :
