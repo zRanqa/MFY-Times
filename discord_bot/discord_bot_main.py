@@ -163,10 +163,12 @@ def downloadMFYDay(date: str, i: int):
     driver.execute_script("findMFY();")
     result = driver.execute_script("return window.extractedMFY;")
     print(result)
-    # write_mfy(result["date"], "test", result["data"])
-    file_name = f"{int(result["date"]):02}-MFY.json"
     
+    # Download JSON
+    file_name = f"{int(result["date"]):02}-MFY.json"
     write_json(file_name, date, result["data"])
+
+    send_message.append(f"Downloaded: {file_name}")
 
     driver.close()
     driver.switch_to.window(original_window)
@@ -180,7 +182,6 @@ def downloadMFY(date: str, day_or_week: str):
     # Create a webdriver and open the EOPS website
         driver = webdriver.Chrome()
         driver.get("https://eops.mcdonalds.com.au/Snap")
-        print("test")
 
         # Maximise to stop the items from not being on the screen
         driver.maximize_window()
@@ -253,15 +254,46 @@ def downloadMFY(date: str, day_or_week: str):
 def downloadRoster(date: str):
     global driver
     try:
+        needs_to_log_in = False
+        if driver is None:
+            driver = webdriver.Chrome()
+            needs_to_log_in = True
         driver.get("https://myrestaurant.mcdonalds.com.au/Restaurant/1036/Home")
 
-        # Switch to the new tab
-        original_window = driver.current_window_handle
-        for handle in driver.window_handles:
-            if handle != original_window:
-                driver.close()
-                driver.switch_to.window(original_window)
-                break
+        if not needs_to_log_in:
+            # Switch to the new tab
+            original_window = driver.current_window_handle
+            for handle in driver.window_handles:
+                if handle != original_window:
+                    driver.close()
+                    driver.switch_to.window(original_window)
+                    break
+
+        else:
+            # Maximise to stop the items from not being on the screen
+            driver.maximize_window()
+            
+            # Wait before clicking the "continue" button for selecting language
+            wait = WebDriverWait(driver, 10)
+            button = wait.until(EC.presence_of_element_located((By.ID, "btnSetPopup")))
+            button.click()
+            
+            # Open the manager login dropdown
+            time.sleep(5)
+            opener = driver.find_element(By.ID, "managersOpener")
+            driver.execute_script("arguments[0].click();", opener)
+            
+            # Input the username and password
+            wait = WebDriverWait(driver, 10)
+            username = wait.until(EC.element_to_be_clickable((By.ID, "UsernameInputTxtManagers")))
+            username.send_keys(USERNAME)
+            password = wait.until(EC.element_to_be_clickable((By.ID, "PasswordInputManagers")))
+            password.send_keys(PASSWORD)
+
+            # Click the login button.
+            wait = WebDriverWait(driver, 5)
+            button = wait.until(EC.presence_of_element_located((By.ID, "btnLoginManagers")))
+            button.click()
 
         wait = WebDriverWait(driver, 5)
         time.sleep(5)
@@ -338,12 +370,15 @@ def downloadRoster(date: str):
         write_json("roster.json", date, result)
 
         driver.close()
+        send_message.append(f"Downloaded: Roster")
         send_message.append(push_data_to_github())
+        driver = None
         return True
     except:
         for window in driver.window_handles:
             driver.switch_to.window(window)
             driver.close()
+        driver = None
         return False
 
 def find_last_folder_date(day: int, month: int, year: int):
@@ -424,12 +459,10 @@ def main():
             global send_message
             
             if mfy_worked and roster_worked:
+                send_message.append(push_data_to_github())
                 passed, fail_message, total_mfy_data = manual_calculation.calculate_data(date)
                 if passed:
                     manual_calculation.print_data(total_mfy_data)
-                    send_message.append(push_data_to_github())
-                    # TODO "COMMIT THE DATA TO REPOSITORY"
-                    # TODO MAKE THIS LOOPING SO I CAN RUN THIS ON LINUX OCMPUTER
                 else:
                     send_message.append(fail_message)
             else:
@@ -588,38 +621,66 @@ async def on_message(message):
                 await message.channel.send(f"Error with date: {valid_message}")
                 return
             
-            count = 1
-            week_ending_date = date
-            is_date_found = compare_date_to_data(week_ending_date)
-            while not is_date_found and count < 7:
-                week_ending_date = increment_date(week_ending_date, 1)
+            if message_input[1] == "mfy":
+                count = 1
+                week_ending_date = date
                 is_date_found = compare_date_to_data(week_ending_date)
-                count += 1
-            if not is_date_found:
-                await message.channel.send(f"ERROR: Date not found")
-                return
-            if is_date_found:
-                folder = os.listdir(f'data/{week_ending_date}')
-                format_mfy_date = f"{message_input[2].split("-")[2]}-MFY.json"
-                copied_mfy_date = format_mfy_date
-                print(format_mfy_date)
-                found = False
-                for i in folder:
-                    if copied_mfy_date == i:
-                        found = True
-                        break
-                if found:
-                    if len(message_input) > 3 and (message_input[3] == "yes" or message_input[3] == "y"):
-                        await message.channel.send(f"Deleting date in folder and downloading new data")
-                        os.remove(f'data/{week_ending_date}/{format_mfy_date}')
+                while not is_date_found and count < 7:
+                    week_ending_date = increment_date(week_ending_date, 1)
+                    is_date_found = compare_date_to_data(week_ending_date)
+                    count += 1
+                if not is_date_found:
+                    await message.channel.send(f"ERROR: Date not found")
+                    return
+                if is_date_found:
+                    folder = os.listdir(f'data/{week_ending_date}')
+                    format_mfy_date = f"{message_input[2].split("-")[2]}-MFY.json"
+                    copied_mfy_date = format_mfy_date
+                    print(format_mfy_date)
+                    found = False
+                    for i in folder:
+                        if copied_mfy_date == i:
+                            found = True
+                            break
+                    if found:
+                        if len(message_input) > 3 and (message_input[3] == "yes" or message_input[3] == "y"):
+                            await message.channel.send(f"Deleting date in folder and downloading new data")
+                            os.remove(f'data/{week_ending_date}/{format_mfy_date}')
+                            thread = threading.Thread(target=downloadMFY, args=(message_input[2], "day"))
+                            thread.start()
+                        else:
+                            await message.channel.send(f"ERROR: MFY Date already exists. Type 'y' at the end of the command to force delete the current data")
+                    else:
+                        await message.channel.send(f"Getting new MFY Data")
                         thread = threading.Thread(target=downloadMFY, args=(message_input[2], "day"))
                         thread.start()
-                    else:
-                        await message.channel.send(f"ERROR: MFY Date already exists. Type 'y' at the end of the command to force delete the current data")
-                else:
-                    await message.channel.send(f"Getting new MFY Data")
-                    thread = threading.Thread(target=downloadMFY, args=(message_input[2], "day"))
-                    thread.start()
+            elif message_input[1] == "roster":
+                folder = os.listdir(f'data')
+                found_folder = False
+                for i in folder:
+                    if i == date:
+                        found_folder = True
+                        found_roster = False
+                        for j in os.listdir(f"data/{date}"):
+                            if j == "roster.json":
+                                found_roster = True
+                        if found_roster:
+                            if len(message_input) > 3 and (message_input[3] == "yes" or message_input[3] == "y"):
+                                await message.channel.send(f"Deleting roster in folder and downloading new data")
+                                os.remove(f'data/{date}/roster.json')
+                                thread = threading.Thread(target=downloadRoster, args=(message_input[2],))
+                                thread.start()
+                            else:
+                                await message.channel.send(f"ERROR: Roster already exists. Type 'y' at the end of the command to force delete the current data")
+                        else:
+                            await message.channel.send(f"Getting new Roster Data")
+                            thread = threading.Thread(target=downloadRoster, args=(message_input[2],))
+                            thread.start()
+                        break
+                if not found_folder:
+                    await message.channel.send(f"ERROR: date not found in data")
+            else:
+                await message.channel.send(f"ERROR: second parameter should be either 'mfy' or 'roster'")
 
         elif message.content.startswith("!!push"):
             await message.channel.send(push_data_to_github())
