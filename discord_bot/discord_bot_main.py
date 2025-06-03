@@ -56,8 +56,126 @@ def write_json(filename: str, week: str, data: list):
     with open(file_path, "w") as f:
         json.dump(data, f, indent=2)
 
-def downloadMFY(date: str):
-    days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+def downloadMFYDay(date: str, i: int):
+    global driver
+    wait = WebDriverWait(driver, 1)
+
+    # Grab the start date input box
+    start_date = wait.until(EC.element_to_be_clickable((
+        By.CSS_SELECTOR, "#app > div.noprinting > div > div.hierarchy-searchbar-wrapper > div.date-select-bar > div:nth-child(2) > div:nth-child(1) > div > div > div.dx-texteditor-input-container > input"
+    )))
+
+    incremented_date = increment_date(date, i).split("-")
+    new_date = f"{incremented_date[2]}/{incremented_date[1]}/20{incremented_date[0]}"
+
+    # Remove any input already in the box
+    start_date.click()
+    time.sleep(0.05)
+    for j in range(12):
+        start_date.send_keys(Keys.BACKSPACE) 
+        time.sleep(0.05)
+    for j in range(12):
+        start_date.send_keys(Keys.DELETE)
+        time.sleep(0.05)
+    # Type in the selected date
+    for char in new_date:
+        start_date.send_keys(char)
+        time.sleep(0.05)
+    wait = WebDriverWait(driver, 2)
+    start_date.send_keys(Keys.ENTER)
+
+    
+    wait = WebDriverWait(driver, 5)
+    # Grab the end date input box
+    end_date = wait.until(EC.element_to_be_clickable((
+        By.CSS_SELECTOR, "#app > div.noprinting > div > div.hierarchy-searchbar-wrapper > div.date-select-bar > div:nth-child(2) > div:nth-child(2) > div > div > div.dx-texteditor-input-container > input"
+    )))
+    
+    
+    # Remove any input already in the box
+    end_date.click()
+    end_date.send_keys(Keys.ENTER)
+    time.sleep(0.05)
+    for j in range(12):
+        end_date.send_keys(Keys.BACKSPACE)
+        time.sleep(0.05)
+    for j in range(12):
+        end_date.send_keys(Keys.DELETE)
+        time.sleep(0.05)
+    # Type in the selected date
+    for char in new_date:
+        end_date.send_keys(char)
+        time.sleep(0.05)
+    end_date.send_keys(Keys.ENTER)
+
+    # Find and click the "go" button
+    go_button = wait.until(EC.element_to_be_clickable((
+        By.CSS_SELECTOR, "div[role='button'][aria-label='Go'].dx-button"
+    )))
+    go_button.click()
+    
+    # Wait for page to load.
+    wait = WebDriverWait(driver, 5)
+    time.sleep(5)
+
+    # Save the current window, the next input will open another tab.
+    original_window = driver.current_window_handle
+
+    wait = WebDriverWait(driver, 20)
+    time.sleep(20)
+
+    # Click the link for the Advance Drill Thru Info
+    day_link = driver.find_element(By.XPATH, "//a[text()='Day']")
+    driver.execute_script("arguments[0].click();", day_link)
+
+    # Wait for the second tab to load
+    wait = WebDriverWait(driver, 10)
+    time.sleep(10)
+    WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
+
+    # Switch to the new tab
+    for handle in driver.window_handles:
+        if handle != original_window:
+            driver.switch_to.window(handle)
+            break
+
+    # Scroll to the bottom of the page
+    wait = WebDriverWait(driver, 15)
+    time.sleep(15)
+    driver.execute_script("window.scrollBy(0, 500);")
+    wait = WebDriverWait(driver, 2)
+    time.sleep(2)
+
+    # Expand the information on the page (really only needed for thursday/friday but better to be consistent (im lazy))
+    all_button = wait.until(EC.element_to_be_clickable((
+        By.XPATH, "//div[@role='button' and contains(@aria-label, 'Items per page') and text()='All']"
+    )))
+    all_button.click()
+
+    wait = WebDriverWait(driver, 5)
+    time.sleep(5)
+
+    # Open the already coded web scraper
+    with open("discord_bot/scrape_utils.js", "r") as file:
+        scrape_js = file.read()
+    driver.execute_script(scrape_js)
+
+    # Run the scraper script
+    driver.execute_script("findMFY();")
+    result = driver.execute_script("return window.extractedMFY;")
+    print(result)
+    # write_mfy(result["date"], "test", result["data"])
+    file_name = f"{int(result["date"]):02}-MFY.json"
+    
+    write_json(file_name, date, result["data"])
+
+    driver.close()
+    driver.switch_to.window(original_window)
+
+    wait = WebDriverWait(driver, 15)
+    time.sleep(15)
+
+def downloadMFY(date: str, day_or_week: str):
     global driver
     try:
     # Create a webdriver and open the EOPS website
@@ -115,137 +233,15 @@ def downloadMFY(date: str):
         wait = WebDriverWait(driver, 10)
         time.sleep(10)
 
-        for i in range(6, -1, -1):
-
-            # Grab the start date input box
-            start_date = wait.until(EC.element_to_be_clickable((
-                By.CSS_SELECTOR, "#app > div.noprinting > div > div.hierarchy-searchbar-wrapper > div.date-select-bar > div:nth-child(2) > div:nth-child(1) > div > div > div.dx-texteditor-input-container > input"
-            )))
-
-            new_date = date.split("-")
-            day_value = 0
-            month_value = 0
-            if int(new_date[2]) - i > 0:
-                day_value = int(new_date[2]) - i
-                month_value = new_date[1]
-            else:
-                month_index = int(new_date[1]) - 2
-                month_value = int(new_date[1]) - 1
-                day_value = days_in_month[month_index] + int(new_date[2]) - i
-
-            new_date = f"{day_value}/{month_value}/20{new_date[0]}"
-
-
-            # Remove any input already in the box
-            start_date.click()
-            time.sleep(0.05)
-            for j in range(12):
-                start_date.send_keys(Keys.BACKSPACE) 
-                time.sleep(0.05)
-            for j in range(12):
-                start_date.send_keys(Keys.DELETE)
-                time.sleep(0.05)
-            # Type in the selected date
-            for char in new_date:
-                start_date.send_keys(char)
-                time.sleep(0.05)
-            wait = WebDriverWait(driver, 2)
-            start_date.send_keys(Keys.ENTER)
-
-            
-            wait = WebDriverWait(driver, 5)
-            # Grab the end date input box
-            end_date = wait.until(EC.element_to_be_clickable((
-                By.CSS_SELECTOR, "#app > div.noprinting > div > div.hierarchy-searchbar-wrapper > div.date-select-bar > div:nth-child(2) > div:nth-child(2) > div > div > div.dx-texteditor-input-container > input"
-            )))
-            
-            
-            # Remove any input already in the box
-            end_date.click()
-            end_date.send_keys(Keys.ENTER)
-            time.sleep(0.05)
-            for j in range(12):
-                end_date.send_keys(Keys.BACKSPACE)
-                time.sleep(0.05)
-            for j in range(12):
-                end_date.send_keys(Keys.DELETE)
-                time.sleep(0.05)
-            # Type in the selected date
-            for char in new_date:
-                end_date.send_keys(char)
-                time.sleep(0.05)
-            end_date.send_keys(Keys.ENTER)
-
-            # Find and click the "go" button
-            go_button = wait.until(EC.element_to_be_clickable((
-                By.CSS_SELECTOR, "div[role='button'][aria-label='Go'].dx-button"
-            )))
-            go_button.click()
-            
-            # Wait for page to load.
-            wait = WebDriverWait(driver, 5)
-            time.sleep(5)
-
-            # Save the current window, the next input will open another tab.
-            original_window = driver.current_window_handle
-
-            wait = WebDriverWait(driver, 20)
-            time.sleep(20)
-
-            # Click the link for the Advance Drill Thru Info
-            day_link = driver.find_element(By.XPATH, "//a[text()='Day']")
-            driver.execute_script("arguments[0].click();", day_link)
-
-            # Wait for the second tab to load
-            wait = WebDriverWait(driver, 10)
-            time.sleep(10)
-            WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
-
-            # Switch to the new tab
-            for handle in driver.window_handles:
-                if handle != original_window:
-                    driver.switch_to.window(handle)
-                    break
-
-            # Scroll to the bottom of the page
-            wait = WebDriverWait(driver, 15)
-            time.sleep(15)
-            driver.execute_script("window.scrollBy(0, 500);")
-            wait = WebDriverWait(driver, 2)
-            time.sleep(2)
-
-            # Expand the information on the page (really only needed for thursday/friday but better to be consistent (im lazy))
-            all_button = wait.until(EC.element_to_be_clickable((
-                By.XPATH, "//div[@role='button' and contains(@aria-label, 'Items per page') and text()='All']"
-            )))
-            all_button.click()
-
-            wait = WebDriverWait(driver, 5)
-            time.sleep(5)
-
-            # Open the already coded web scraper
-            with open("discord_bot/scrape_utils.js", "r") as file:
-                scrape_js = file.read()
-            driver.execute_script(scrape_js)
-
-            # Run the scraper script
-            driver.execute_script("findMFY();")
-            result = driver.execute_script("return window.extractedMFY;")
-            print(result)
-            # write_mfy(result["date"], "test", result["data"])
-            file_name = f"{result["date"]}-MFY.json"
-            write_json(file_name, date, result["data"])
-
-
-
-
-            driver.close()
-            driver.switch_to.window(original_window)
-
-            wait = WebDriverWait(driver, 15)
-            time.sleep(15)
-
-            # END FOR
+        if day_or_week == "week":
+            for i in range(6, -1, -1):
+                downloadMFYDay(date, i)
+        elif day_or_week == "day":
+                print(date)
+                downloadMFYDay(date, 0)
+                for window in driver.window_handles:
+                    driver.switch_to.window(window)
+                    driver.close()
         return True
     except:
         for window in driver.window_handles:
@@ -381,11 +377,11 @@ def find_last_folder_date(day: int, month: int, year: int):
 
     return last_folder_date, day_difference
 
-def get_next_date(last_date: str) -> str:
+def increment_date(last_date: str, increment_by: int) -> str:
     days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     [year, month, day] = last_date.split('-')
     year, month, day = int(year), int(month), int(day)
-    day += 7
+    day += increment_by
     if day > days_in_month[month-1]:
         day -= days_in_month[month-1]
         month += 1
@@ -412,16 +408,15 @@ def delete_folder(path):
 def main():
 
     while True:
-        # print("Testing date difference")
-
         date, day_difference = find_last_folder_date(datetime.date.today().day, datetime.date.today().month, datetime.date.today().year)
         global total_mfy_data
+        # print(f"Testing date difference: {day_difference}")
 
         if day_difference > 7:
 
-            os.makedirs(f"data/{make_folders.get_next_date(date)}")
+            os.makedirs(f"data/{make_folders.increment_date(date, 7)}")
             date = os.listdir('data')[-1]
-            mfy_worked = downloadMFY(date)
+            mfy_worked = downloadMFY(date, "week")
             roster_worked = downloadRoster(date)
 
             global send_failed
@@ -441,7 +436,7 @@ def main():
                     send_failed.append("roster")
                 delete_folder(f"data/{date}")
 
-        time.sleep(60)
+        time.sleep(5)
 
 
 def save_last_message_location(message):
@@ -457,6 +452,30 @@ def load_last_message_location():
 
 def valid_code(message):
     return message.content.startswith(("!!code", "!!other_code"))
+
+def compare_date_to_data(date):
+    data = os.listdir('data')
+    found = False
+    for i in data:
+        if i == date:
+            found = True
+            break
+    return found
+
+def is_valid_date(date):
+    if len(date) != 8:
+        return False, "Date is not 8 characters"
+    for i in range(len(date)):
+        if i == 2 or i == 5:
+            if date[i] != "-":
+                return False, "Date is not formatted correctly, [YY-MM-DD]"
+        else:
+            try:
+                int(date[i])
+            except:
+                return False, "Date contains a Non-Number"
+    
+    return True, ""
 
 
 async def send_messages():
@@ -516,14 +535,8 @@ async def on_message(message):
     if message.author == client.user:
         return
     
-    if message.content.startswith("!!help"):
-        message_to_send = f"""```Welcome to MFY Bot! Here are a list of commands:\n
-!!code [code] -> Sends the MFA code to the discord bot
-!!calculate OR !!cal [YY-MM-DD] -> Calculates the scores for the given weeks
-!!data -> Outputs all of the current weekly data```"""
-        await message.channel.send(message_to_send)
-    elif message.content.startswith("!!code"):
-        if message.author.id == ZRANQA_ID:
+    if message.author.id == ZRANQA_ID: # If jonno sent message
+        if message.content.startswith("!!code"):
             await message.channel.send("Code recieved")
 
             global waiting_for_mfa
@@ -544,8 +557,57 @@ async def on_message(message):
                 
             else:
                 await message.channel.send("Program does not need code yet.")
-        else:
-            await message.channel.send("Bro is NOT zRanqa, get lost bozo")
+        elif message.content.startswith("!!get"):
+            message_input = message.content.split(" ")
+            if len(message_input) <= 2:
+                await message.channel.send("Incorrect Syntax: !!get [mfy/roster] [date] [y]")
+                return
+            
+            date = message_input[2]
+            
+            valid_date, valid_message = is_valid_date(date)
+            if not valid_date:
+                await message.channel.send(f"Error with date: {valid_message}")
+                return
+            
+            count = 1
+            week_ending_date = date
+            is_date_found = compare_date_to_data(week_ending_date)
+            while not is_date_found and count < 7:
+                week_ending_date = increment_date(week_ending_date, 1)
+                is_date_found = compare_date_to_data(week_ending_date)
+                count += 1
+            if not is_date_found:
+                await message.channel.send(f"ERROR: Date not found")
+                return
+            if is_date_found:
+                folder = os.listdir(f'data/{week_ending_date}')
+                format_mfy_date = f"{message_input[2].split("-")[2]}-MFY.json"
+                copied_mfy_date = format_mfy_date
+                print(format_mfy_date)
+                found = False
+                for i in folder:
+                    if copied_mfy_date == i:
+                        found = True
+                        break
+                if found:
+                    if len(message_input) > 3 and (message_input[3] == "yes" or message_input[3] == "y"):
+                        await message.channel.send(f"Deleting date in folder and downloading new data")
+                        os.remove(f'data/{week_ending_date}/{format_mfy_date}')
+                        downloadMFY(message_input[2], "day")
+                    else:
+                        await message.channel.send(f"ERROR: MFY Date already exists")
+                else:
+                    await message.channel.send(f"Getting new MFY Data")
+                    thread = threading.Thread(target=downloadMFY, args=(message_input[2], "day"))
+                    thread.start()
+            
+    if message.content.startswith("!!help"):
+        message_to_send = f"""```Welcome to MFY Bot! Here are a list of commands:\n
+!!code [code] -> Sends the MFA code to the discord bot
+!!calculate OR !!cal [YY-MM-DD] -> Calculates the scores for the given weeks
+!!data -> Outputs all of the current weekly data```"""
+        await message.channel.send(message_to_send)
 
     elif message.content.startswith("!!calculate") or message.content.startswith("!!cal") :
         message_input = message.content.split(" ")
@@ -595,6 +657,8 @@ async def on_message(message):
                             date_message += f"{file}\n"
                 date_message += "```"
                 await message.channel.send(date_message)
+
+
 
     if message.author.id == ZRANQA_ID:
         save_last_message_location(message)
