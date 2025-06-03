@@ -687,7 +687,12 @@ async def on_message(message):
 
     if message.content.startswith("!!help"):
         message_to_send = f"""```Welcome to MFY Bot! Here are a list of commands:\n
+For Jonno Only:
 !!code [code] -> Sends the MFA code to the discord bot
+!!get [mfy/roster] [date] [y] -> Downloads a specific MFY Day or roster week, the 'Y' is a force re-download
+!!push -> pushes the data folder to the main repository\n
+For Everyone:
+!!help -> Prints out this lovely message :D
 !!calculate OR !!cal [YY-MM-DD] -> Calculates the scores for the given weeks
 !!data -> Outputs all of the current weekly data```"""
         await message.channel.send(message_to_send)
@@ -741,6 +746,8 @@ async def on_message(message):
                 date_message += "```"
                 await message.channel.send(date_message)
 
+    elif message.content.startswith("!!code") or  message.content.startswith("!!get") or message.content.startswith("!!push"):
+        await message.channel.send("Sorry broskiwilliams, these commands are for jonno only")
 
 
     if message.author.id == ZRANQA_ID:
