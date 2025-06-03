@@ -172,8 +172,8 @@ def downloadMFYDay(date: str, i: int):
     driver.close()
     driver.switch_to.window(original_window)
 
-    wait = WebDriverWait(driver, 15)
-    time.sleep(15)
+    wait = WebDriverWait(driver, 5)
+    time.sleep(5)
 
 def downloadMFY(date: str, day_or_week: str):
     global driver
@@ -594,9 +594,10 @@ async def on_message(message):
                     if len(message_input) > 3 and (message_input[3] == "yes" or message_input[3] == "y"):
                         await message.channel.send(f"Deleting date in folder and downloading new data")
                         os.remove(f'data/{week_ending_date}/{format_mfy_date}')
-                        downloadMFY(message_input[2], "day")
+                        thread = threading.Thread(target=downloadMFY, args=(message_input[2], "day"))
+                        thread.start()
                     else:
-                        await message.channel.send(f"ERROR: MFY Date already exists")
+                        await message.channel.send(f"ERROR: MFY Date already exists. Type 'y' at the end of the command to force delete the current data")
                 else:
                     await message.channel.send(f"Getting new MFY Data")
                     thread = threading.Thread(target=downloadMFY, args=(message_input[2], "day"))
