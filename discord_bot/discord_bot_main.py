@@ -685,12 +685,14 @@ async def on_message(message):
         elif message.content.startswith("!!push"):
             await message.channel.send(push_data_to_github())
 
+
     if message.content.startswith("!!help"):
         message_to_send = f"""```Welcome to MFY Bot! Here are a list of commands:\n
 For Jonno Only:
-!!code [code] -> Sends the MFA code to the discord bot
-!!get [mfy/roster] [date] [y] -> Downloads a specific MFY Day or roster week, the 'Y' is a force re-download
-!!push -> pushes the data folder to the main repository\n
+!!code [code] -> Sends the MFA code to the discord bot.
+!!get [mfy/roster] [date] [y] -> Downloads a specific MFY Day or roster week, the 'Y' is a force re-download.
+!!push -> Pushes the data folder to the main repository.
+!!say -> Stupid command jonno 'had' to make.\n
 For Everyone:
 !!help -> Prints out this lovely message :D
 !!calculate OR !!cal [YY-MM-DD] -> Calculates the scores for the given weeks
@@ -746,7 +748,12 @@ For Everyone:
                 date_message += "```"
                 await message.channel.send(date_message)
 
-    elif message.content.startswith("!!code") or  message.content.startswith("!!get") or message.content.startswith("!!push"):
+
+    elif message.content.startswith("!!say"):
+        if len(message.content) > len("!!say "):
+            await message.channel.send(message.content[len("!!say "):])
+
+    elif not message.author.id == ZRANQA_ID and (message.content.startswith("!!code") or  message.content.startswith("!!get") or message.content.startswith("!!push")):
         await message.channel.send("Sorry broskiwilliams, these commands are for jonno only")
 
 
