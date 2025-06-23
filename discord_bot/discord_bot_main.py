@@ -64,7 +64,7 @@ def downloadMFYDay(date: str, i: int):
         By.CSS_SELECTOR, "#app > div.noprinting > div > div.hierarchy-searchbar-wrapper > div.date-select-bar > div:nth-child(2) > div:nth-child(1) > div > div > div.dx-texteditor-input-container > input"
     )))
 
-    incremented_date = increment_date(date, i).split("-")
+    incremented_date = increment_date(date, -i).split("-")
     new_date = f"{incremented_date[2]}/{incremented_date[1]}/20{incremented_date[0]}"
 
     # Remove any input already in the box
@@ -425,6 +425,12 @@ def increment_date(last_date: str, increment_by: int) -> str:
     if month > 12:
         month = 1
         year += 1
+    if day <= 0:
+        month -= 1
+        day = days_in_month[month-1] + day
+    if month <= 0:
+        month = 12
+        year -= 1
     return f"{year:02}-{month:02}-{day:02}"
 
 def delete_folder(path):

@@ -7,7 +7,7 @@ WEIGHTED_LINE_LIST = [
     "Jamil Taleb",
     "Tyson Webb",
     "Frankie Brar",
-    "Levent Orcan"
+    "Levent Orcan",
     "Kyle Mawer",
     "Ben Dummett",
     "Sarah Essery",
@@ -18,10 +18,12 @@ WEIGHTED_LINE_LIST = [
     "Reebhav Chopra",
     "Lucinda Parker",
     "Niral Maharaj",
-    "PJ Burgio-Spooner"
+    "PJ Burgio-Spooner",
     "Noelle DI Paolo",
-    "Pheonix Di Sarno",
-    "Ria Patil"
+    "Phoenix Di Sarno",
+    "Ria Patil",
+    "Jeremy Maillard",
+    "Aidan McMackin"
 ]
 
 def getRosterFromDate(date: str):
@@ -78,22 +80,29 @@ def createTemplateData(roster):
 def checkWorkersInHour(roster, i, mfy, j):
     try:
         # foundLIST index 0 = count
-        foundList = [0]
+        foundList = []
         for k in range(0, len(roster[i]["data"])):
             if (int(roster[i]["data"][k]["start"]) <= int(mfy[j]["start"])) and (int(roster[i]["data"][k]["end"]) >= int(mfy[j]["end"])):
                 foundList.append(roster[i]["data"][k]["name"])
-                foundList[0] += 1
 
         # Sort in order from WEIGHTED_LINE_LIST
-        swapIndex = 1
+        sortedList = []
         for k in range(0, len(WEIGHTED_LINE_LIST)):
-            for l in range(swapIndex, len(foundList)):
+            for l in range(len(foundList)):
                 if WEIGHTED_LINE_LIST[k] == foundList[l]:
-                    temp = foundList[swapIndex]
-                    foundList[swapIndex] = foundList[l]
-                    foundList[l] = temp
-                    swapIndex += 1
-        return foundList
+                    sortedList.append(foundList[l])
+        if len(foundList) != len(sortedList):
+            print("FoundList:  ", foundList)
+            print("SortedList: ", sortedList, "\n")
+        # swapIndex = 1
+        # for k in range(0, len(WEIGHTED_LINE_LIST)):
+        #     for l in range(swapIndex, len(foundList)):
+        #         if WEIGHTED_LINE_LIST[k] == foundList[l]:
+        #             temp = foundList[swapIndex]
+        #             foundList[swapIndex] = foundList[l]
+        #             foundList[l] = temp
+        #             swapIndex += 1
+        return sortedList
     except:
         return False
 
@@ -132,8 +141,8 @@ def calculate_data(date: str) -> list[dict[str, int]]:
                     return False, "workersinhour", []
                 for k in range(0, len(roster[i]["data"])):
                     if (int(roster[i]["data"][k]["start"]) <= int(mfy[j]["start"])) and (int(roster[i]["data"][k]["end"]) >= int(mfy[j]["end"])):
-                        if workersInHour[0] > 2:
-                            if roster[i]["data"][k]["name"] != workersInHour[1] and roster[i]["data"][k]["name"] != workersInHour[2]:
+                        if len(workersInHour) > 2:
+                            if roster[i]["data"][k]["name"] != workersInHour[0] and roster[i]["data"][k]["name"] != workersInHour[1]:
                                 continue
                         for l in range(0,len(total_mfy_data)):
                             if (roster[i]["data"][k]["name"] == total_mfy_data[l]["name"]):
