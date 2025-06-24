@@ -968,7 +968,7 @@ async def pushData(interaction: discord.Interaction, date: Optional[str]):
             date_message = f"```Files in {date}:\n\n"
             for curr_date in date_list:
                 if date == curr_date:
-                    for file in os.listdir(f'data/{date}'):
+                    for file in sort_dates(os.listdir(f'data/{date}')):
                         date_message += f"{file}\n"
             date_message += "```"
             await interaction.response.send_message(date_message)
