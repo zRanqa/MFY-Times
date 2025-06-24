@@ -389,7 +389,7 @@ def find_last_folder_date(day: int, month: int, year: int):
     days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     day_difference = 0
 
-    last_folder_date = os.listdir('data')[-1]
+    last_folder_date = sort_dates(os.listdir('data'))[-1]
     current_folder_date = f"{year}-{month}-{day}"
 
     while last_folder_date != current_folder_date and day_difference <= 14:
@@ -458,7 +458,7 @@ def main():
         if day_difference > 7:
 
             os.makedirs(f"data/{make_folders.increment_date(date, 7)}")
-            date = os.listdir('data')[-1]
+            date = sort_dates(os.listdir('data'))[-1]
             mfy_worked = downloadMFY(date, "week")
             roster_worked = downloadRoster(date)
 
@@ -481,6 +481,18 @@ def main():
         time.sleep(5)
 
 
+
+def sort_dates(dateList):
+    for i in range(len(dateList) - 1):
+        smallest = i
+        for j in range(i + 1, len(dateList)):
+            if dateList[j] < dateList[smallest]:
+                smallest = j
+        temp = dateList[i]
+        dateList[i] = dateList[smallest]
+        dateList[smallest] = temp
+    return dateList
+
 def save_last_message_location(message):
     with open("discord_bot/last_message_location.json", "w") as f:
         json.dump({"channel_id": message.channel.id}, f)
@@ -496,7 +508,7 @@ def valid_code(message):
     return message.content.startswith(("!!code", "!!other_code"))
 
 def compare_date_to_data(date):
-    data = os.listdir('data')
+    data = sort_dates(os.listdir('data'))
     found = False
     for i in data:
         if i == date:
@@ -711,7 +723,7 @@ For Everyone:
             if len(message_input[1]) == 8:
                 try:
                     input_date = message_input[1].replace("/", "-")
-                    date_list = os.listdir('data')
+                    date_list = sort_dates(os.listdir('data'))
                     found_date = False
                     for i in date_list:
                         if i == input_date:
@@ -736,7 +748,7 @@ For Everyone:
         
     elif message.content.startswith("!!data"):
         message_input = message.content.split(" ")
-        date_list = os.listdir('data')
+        date_list = sort_dates(os.listdir('data'))
         if len(message_input) == 1:
             date_message = "```Weeks:\n\n"
             for i in date_list:
