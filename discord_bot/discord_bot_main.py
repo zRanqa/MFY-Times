@@ -11,7 +11,11 @@ import os
 import datetime
 
 import discord
+from discord.ext import commands
+from discord import app_commands
+from typing import Optional
 from discord.utils import get
+
 from random import randint
 import asyncio
 from _thread import *
@@ -25,7 +29,7 @@ import manual_calculation
 
 
 intents = discord.Intents().all()
-client = discord.Client(intents=intents)
+client = commands.Bot(command_prefix="!!", intents=intents)
 
 MFY_WEBSITE = "https://eops.mcdonalds.com.au/Snap"
 ROSTER_WEBSITE = "https://myrestaurant.mcdonalds.com.au/Restaurant/1036/Home"
@@ -37,6 +41,7 @@ USERNAME = os.getenv("EMAIL")
 PASSWORD = os.getenv("PASSWORD")
 
 ZRANQA_ID = 663195676330557459
+GUILD_ID = discord.Object(id=969884313980125214)
 
 mfa_code = None
 waiting_for_mfa = False
@@ -541,6 +546,15 @@ def push_data_to_github():
     except subprocess.CalledProcessError as e:
         return f"Git error: {e}"
 
+def format_mfy(total_mfy_data: list, date: str):
+    if date is not None:
+        mfy_message = f"```Rankings for date '{date}':\n\n"
+    else:
+        mfy_message = "```Rankings:\n\n"
+    for i in range(0, len(total_mfy_data)):
+        mfy_message += f"{i+1:>2}.\t{total_mfy_data[i]["name"]}: {total_mfy_data[i]["mfy_average"]}\n"
+    mfy_message += "```"
+    return mfy_message
 
 
 async def send_messages():
@@ -561,11 +575,7 @@ async def send_messages():
             if channel_id is not None:
                 channel = client.get_channel(channel_id)
                 if channel:
-                    mfy_message = "```Rankings:\n\n"
-                    for i in range(0, len(total_mfy_data)):
-                        mfy_message += f"{i+1}.\t{total_mfy_data[i]["name"]}: {total_mfy_data[i]["mfy_average"]}\n"
-                    mfy_message += "```"
-                    await channel.send(mfy_message)
+                    await channel.send(format_mfy(total_mfy_data, None))
 
         global send_message
         if len(send_message) > 0:
@@ -596,6 +606,11 @@ async def send_messages():
 @client.event
 async def on_ready():
     print("{0.user} is online!".format(client))
+    try:
+        synced = await client.tree.sync(guild=GUILD_ID)
+        print(f"Synced {len(synced)} comands to guild {GUILD_ID.id}")
+    except Exception as e:
+        print(f"ERROR syncing commands: {e}")
     client.loop.create_task(send_messages())
 
 @client.event
@@ -766,17 +781,178 @@ For Everyone:
                 date_message += "```"
                 await message.channel.send(date_message)
 
-
-    elif message.content.startswith("!!say"):
-        if len(message.content) > len("!!say "):
-            await message.channel.send(message.content[len("!!say "):])
+    elif message.content.startswith("!!echo"):
+        if len(message.content) > len("!!echo "):
+            await message.channel.send(message.content[len("!!echo "):])
 
     elif not message.author.id == ZRANQA_ID and (message.content.startswith("!!code") or  message.content.startswith("!!get") or message.content.startswith("!!push")):
         await message.channel.send("Sorry broskiwilliams, these commands are for jonno only")
 
-
     if message.author.id == ZRANQA_ID:
         save_last_message_location(message)
+
+@client.tree.command(name="hello", description="Say Hello!", guild=GUILD_ID)
+async def sayHello(interaction: discord.Interaction):
+    await interaction.response.send_message("Hello!!")
+
+@client.tree.command(name="help", description="Print all of the available commands!", guild=GUILD_ID)
+async def printHelp(interaction: discord.Interaction):
+    await interaction.response.send_message(f"""```Welcome to MFY Bot! Here are a list of commands:\n
+For Jonno Only:
+!!code [code] -> Sends the MFA code to the discord bot.
+!!get [mfy/roster] [date] [y] -> Downloads a specific MFY Day or roster week, the 'Y' is a force re-download.
+!!push -> Pushes the data folder to the main repository.\n
+For Everyone:
+!!help -> Prints out this lovely message :D
+!!calculate OR !!cal [YY-MM-DD] -> Calculates the scores for the given weeks
+!!data -> Outputs all of the current weekly data
+!!say -> Stupid command jonno 'had' to make.```""")
+    
+@client.tree.command(name="code", description="The MFA code", guild=GUILD_ID)
+async def recieveCode(interaction: discord.Interaction, code: int):
+    if interaction.user.id == ZRANQA_ID:
+        global waiting_for_mfa
+        if waiting_for_mfa:
+            if len(str(code)) == 6:
+                global mfa_code
+                mfa_code = str(code)
+                await interaction.response.send_message(str(code) + " Is a valid Code")
+
+            else:
+                await interaction.response.send_message("Not a valid Code")
+            
+        else:
+            await interaction.response.send_message("Program does not need code yet.")
+    else:
+        await interaction.response.send_message("Sorry broskiwilliams, these commands are for jonno only")
+
+@client.tree.command(name="get", description="Download a specific day/week of MFY/roster", guild=GUILD_ID)
+async def getData(interaction: discord.Interaction, type: str, date: str, overwrite: Optional[str]):
+    
+    if interaction.user.id == ZRANQA_ID:
+        valid_date, valid_message = is_valid_date(date)
+        if not valid_date:
+            await interaction.response.send_message(f"Error with date: {valid_message}")
+            return
+        
+        if type == "mfy":
+            count = 1
+            week_ending_date = date
+            is_date_found = compare_date_to_data(week_ending_date)
+            while not is_date_found and count < 7:
+                week_ending_date = increment_date(week_ending_date, 1)
+                is_date_found = compare_date_to_data(week_ending_date)
+                count += 1
+            if not is_date_found:
+                await interaction.response.send_message(f"ERROR: Date not found")
+                return
+            if is_date_found:
+                folder = os.listdir(f'data/{week_ending_date}')
+                format_mfy_date = f"{date.split("-")[2]}-MFY.json"
+                copied_mfy_date = format_mfy_date
+                print(format_mfy_date)
+                found = False
+                for i in folder:
+                    if copied_mfy_date == i:
+                        found = True
+                        break
+                if found:
+                    if overwrite is not None and overwrite.lower() == "y":
+                        await interaction.response.send_message(f"Deleting date in folder and downloading new data")
+                        os.remove(f'data/{week_ending_date}/{format_mfy_date}')
+                        thread = threading.Thread(target=downloadMFY, args=(date, "day"))
+                        thread.start()
+                    else:
+                        await interaction.response.send_message(f"ERROR: MFY Date already exists. Type 'y' in the optional 'overwrite' paramter to re-download the data")
+                else:
+                    await interaction.response.send_message(f"Getting new MFY Data")
+                    thread = threading.Thread(target=downloadMFY, args=(date, "day"))
+                    thread.start()
+        elif type == "roster":
+            folder = os.listdir(f'data')
+            found_folder = False
+            for i in folder:
+                if i == date:
+                    found_folder = True
+                    found_roster = False
+                    for j in os.listdir(f"data/{date}"):
+                        if j == "roster.json":
+                            found_roster = True
+                    if found_roster:
+                        if overwrite is not None and overwrite.lower() == "y":
+                            await interaction.response.send_message(f"Deleting roster in folder and downloading new data")
+                            os.remove(f'data/{date}/roster.json')
+                            thread = threading.Thread(target=downloadRoster, args=(date,))
+                            thread.start()
+                        else:
+                            await interaction.response.send_message(f"ERROR: Roster already exists. Type 'y' in the optional 'overwrite' paramter to re-download the data")
+                    else:
+                        await interaction.response.send_message(f"Getting new Roster Data")
+                        thread = threading.Thread(target=downloadRoster, args=(date,))
+                        thread.start()
+                    break
+            if not found_folder:
+                await interaction.response.send_message(f"ERROR: date not found in data")
+        else:
+            await interaction.response.send_message(f"ERROR: The 'type' parameter should be either 'mfy' or 'roster'")
+    else:
+        await interaction.response.send_message("Sorry broskiwilliams, these commands are for jonno only")
+
+@client.tree.command(name="push", description="Push the data to the github repository", guild=GUILD_ID)
+async def pushData(interaction: discord.Interaction):
+    if interaction.user.id == ZRANQA_ID:
+        await interaction.response.send_message(push_data_to_github())
+    else:
+        await interaction.response.send_message("Sorry broskiwilliams, these commands are for jonno only")
+
+@client.tree.command(name="echo", description="Echo a message into the chat", guild=GUILD_ID)
+async def pushData(interaction: discord.Interaction, message: str):
+    await interaction.response.send_message(message)
+
+@client.tree.command(name="calculate", description="Caluclate the MFY scores for the given week", guild=GUILD_ID)
+async def pushData(interaction: discord.Interaction, date: str):
+    if len(date) == 8:
+        try:
+            input_date = date.replace("/", "-")
+            date_list = sort_dates(os.listdir('data'))
+            found_date = False
+            for i in date_list:
+                if i == input_date:
+                    global total_mfy_data
+                    global send_last_mfy
+                    passed, fail_message, total_mfy_data = manual_calculation.calculate_data(input_date)
+                    if passed:
+                        await interaction.response.send_message(format_mfy(total_mfy_data, date))
+                    else:
+                        send_message.append(fail_message)
+
+                    found_date = True
+                    break
+            if not found_date:
+                await interaction.response.send_message("Date not found (try /data).")
+        except:
+            pass
+    else:
+        await interaction.response.send_message("Incorrect input, must be in format [YY-MM-DD] (or try /data).")
+
+@client.tree.command(name="data", description="Print every week that in the data", guild=GUILD_ID)
+async def pushData(interaction: discord.Interaction, date: Optional[str]):
+    date_list = sort_dates(os.listdir('data'))
+    if date is None:
+        date_message = "```Weeks:\n\n"
+        for i in date_list:
+            date_message += f"{i}\n"
+        date_message += "```"
+        await interaction.response.send_message(date_message)
+    else:
+        if len(date) == 8:
+            date_message = f"```Files in {date}:\n\n"
+            for curr_date in date_list:
+                if date == curr_date:
+                    for file in os.listdir(f'data/{date}'):
+                        date_message += f"{file}\n"
+            date_message += "```"
+            await interaction.response.send_message(date_message)
 
 thread = threading.Thread(target=main)
 thread.start()
