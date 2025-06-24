@@ -49,6 +49,9 @@ ask_for_code = False
 
 total_mfy_data = None
 send_last_mfy = False
+day_since_last_ping = datetime.date.today()
+
+day_since_last_command = datetime.date.today()
 
 send_message = []
 
@@ -453,9 +456,23 @@ def delete_folder(path):
     else:
         print("Cannot delete data folder")
 
+def send_another_command():
+    global day_since_last_command
+    global day_since_last_ping
+    global send_message
+    today = datetime.date.today()
+    difference = today - day_since_last_command
+    difference_between_last_message = today - day_since_last_ping
+    if difference.days >= 25 and difference_between_last_message.days > 0:
+        day_since_last_ping = datetime.date.today()
+        send_message.append(f"<@{ZRANQA_ID}> Use any command to keep the 'active developer' badge!")
+
 def main():
 
     while True:
+
+        send_another_command()
+
         date, day_difference = find_last_folder_date(datetime.date.today().day, datetime.date.today().month, datetime.date.today().year)
         global total_mfy_data
         # print(f"Testing date difference: {day_difference}")
@@ -793,6 +810,8 @@ For Everyone:
 
 @client.tree.command(name="hello", description="Say Hello!", guild=GUILD_ID)
 async def sayHello(interaction: discord.Interaction):
+    global day_since_last_command
+    day_since_last_command = datetime.date.today()
     await interaction.response.send_message("Hello!!")
 
 @client.tree.command(name="help", description="Print all of the available commands!", guild=GUILD_ID)
