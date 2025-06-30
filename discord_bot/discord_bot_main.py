@@ -3,6 +3,17 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+
+import tempfile
+import subprocess
+
+DRIVER_LOCATION = "/usr/local/bin/chromedriver"
+OPTIONS = Options()
+SERVICE = Service(DRIVER_LOCATION)
+
+
 import time
 import json
 import subprocess
@@ -188,7 +199,7 @@ def downloadMFY(date: str, day_or_week: str):
     global driver
     try:
     # Create a webdriver and open the EOPS website
-        driver = webdriver.Chrome()
+        driver = webdriver.Chrome(service=SERVICE, options=OPTIONS)
         driver.get("https://eops.mcdonalds.com.au/Snap")
 
         # Maximise to stop the items from not being on the screen
@@ -264,7 +275,7 @@ def downloadRoster(date: str):
     try:
         needs_to_log_in = False
         if driver is None:
-            driver = webdriver.Chrome()
+            driver = webdriver.Chrome(service=SERVICE, options=OPTIONS)
             needs_to_log_in = True
         driver.get("https://myrestaurant.mcdonalds.com.au/Restaurant/1036/Home")
 
