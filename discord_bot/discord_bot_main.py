@@ -54,6 +54,9 @@ PASSWORD = os.getenv("PASSWORD")
 ZRANQA_ID = 663195676330557459
 GUILD_ID = discord.Object(id=969884313980125214)
 
+ready_to_download = False
+waiting_for_ready = False
+
 mfa_code = None
 waiting_for_mfa = False
 ask_for_code = False
@@ -480,36 +483,47 @@ def send_another_command():
 
 def main():
 
+    global ready_to_download
+    global waiting_for_ready
+    global send_message
+    global total_mfy_data
+    send_ready_message_once = True
     while True:
 
         send_another_command()
 
         date, day_difference = find_last_folder_date(datetime.date.today().day, datetime.date.today().month, datetime.date.today().year)
-        global total_mfy_data
         # print(f"Testing date difference: {day_difference}")
 
         if day_difference > 7:
+            if ready_to_download:
+                waiting_for_ready = False
+                ready_to_download = False
+                send_ready_message_once = True
+                os.makedirs(f"data/{make_folders.increment_date(date, 7)}")
+                date = sort_dates(os.listdir('data'))[-1]
+                mfy_worked = downloadMFY(date, "week")
+                roster_worked = downloadRoster(date)
 
-            os.makedirs(f"data/{make_folders.increment_date(date, 7)}")
-            date = sort_dates(os.listdir('data'))[-1]
-            mfy_worked = downloadMFY(date, "week")
-            roster_worked = downloadRoster(date)
-
-            global send_message
-            
-            if mfy_worked and roster_worked:
-                send_message.append(push_data_to_github())
-                passed, fail_message, total_mfy_data = manual_calculation.calculate_data(date)
-                if passed:
-                    manual_calculation.print_data(total_mfy_data)
+                
+                if mfy_worked and roster_worked:
+                    send_message.append(push_data_to_github())
+                    passed, fail_message, total_mfy_data = manual_calculation.calculate_data(date)
+                    if passed:
+                        manual_calculation.print_data(total_mfy_data)
+                    else:
+                        send_message.append(fail_message)
                 else:
-                    send_message.append(fail_message)
+                    if not mfy_worked:
+                        send_message.append("mfy")
+                    if not roster_worked:
+                        send_message.append("roster")
+                    delete_folder(f"data/{date}")
             else:
-                if not mfy_worked:
-                    send_message.append("mfy")
-                if not roster_worked:
-                    send_message.append("roster")
-                delete_folder(f"data/{date}")
+                waiting_for_ready = True
+                if send_ready_message_once:
+                    send_ready_message_once = False
+                    send_message.append(f"<@{ZRANQA_ID}> Ready to Download!!! Be prepared with a code!!")
 
         time.sleep(5)
 
@@ -855,6 +869,50 @@ async def recieveCode(interaction: discord.Interaction, code: int):
             await interaction.response.send_message("Program does not need code yet.")
     else:
         await interaction.response.send_message("Sorry broskiwilliams, these commands are for jonno only")
+
+
+@client.tree.command(name="ready", description="Tell the system that you are ready!", guild=GUILD_ID)
+async def sayHello(interaction: discord.Interaction):
+    day_since_last_command = datetime.date.today()
+    global waiting_for_ready
+    if waiting_for_ready:
+        global ready_to_download
+        ready_to_download = True
+        await interaction.response.send_message("Beginning download sequence!!")
+    else:
+        await interaction.response.send_message("Not ready to download yet!!")
+
+# @client.tree.command(name="download", description="Download a whole week of data", guild=GUILD_ID)
+# async def getData(interaction: discord.Interaction, date: str, overwrite: Optional[str]):
+#     if interaction.user.id == ZRANQA_ID:
+#         valid_date, valid_message = is_valid_date(date)
+#         if not valid_date:
+#             await interaction.response.send_message(f"Error with date: {valid_message}")
+#             return
+        
+        
+#         folder = os.listdir(f'data')
+#         found_folder = False
+#         for i in folder:
+#             if i == date:
+#                 found_folder = True
+#         if found_folder:
+#             if overwrite is not None and overwrite.lower() == "y":
+#                 await interaction.response.send_message(f"Deleting folder and downloading new data")
+#                 os.remove(f'data/{date}')
+                
+#                 thread = threading.Thread(target=downloadRoster, args=(date,))
+#                 thread.start()
+#             else:
+#                 await interaction.response.send_message(f"ERROR: Folder already exists. Type 'y' in the optional 'overwrite' paramter to re-download the data")
+#         else:
+#             await interaction.response.send_message(f"Getting new Roster Data")
+#             thread = threading.Thread(target=downloadRoster, args=(date,))
+#             thread.start()
+#         if not found_folder:
+            
+#     else:
+#         await interaction.response.send_message("Sorry broskiwilliams, these commands are for jonno only")
 
 @client.tree.command(name="get", description="Download a specific day/week of MFY/roster", guild=GUILD_ID)
 async def getData(interaction: discord.Interaction, type: str, date: str, overwrite: Optional[str]):
