@@ -23,7 +23,9 @@ WEIGHTED_LINE_LIST = [
     "Phoenix Di Sarno",
     "Ria Patil",
     "Jeremy Maillard",
-    "Aidan McMackin"
+    "Aidan McMackin",
+    "Jeff Miaga",
+    "Ryan Compt"
 ]
 
 def getRosterFromDate(date: str):
