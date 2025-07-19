@@ -1,32 +1,6 @@
 import os
 import json
-
-WEIGHTED_LINE_LIST = [
-    "Kayleb Wilden",
-    "Edan McLean",
-    "Jamil Taleb",
-    "Tyson Webb",
-    "Frankie Brar",
-    "Levent Orcan",
-    "Kyle Mawer",
-    "Ben Dummett",
-    "Sarah Essery",
-    "William Nicholls",
-    "Max Kershaw",
-    "Romaric Kabayija-Zawadi",
-    "Edwin Thomas",
-    "Reebhav Chopra",
-    "Lucinda Parker",
-    "Niral Maharaj",
-    "PJ Burgio-Spooner",
-    "Noelle DI Paolo",
-    "Phoenix Di Sarno",
-    "Ria Patil",
-    "Jeremy Maillard",
-    "Aidan McMackin",
-    "Jeff Miaga",
-    "Ryan Compt"
-]
+import weighted_list_file
 
 def getRosterFromDate(date: str):
     try:
@@ -87,23 +61,17 @@ def checkWorkersInHour(roster, i, mfy, j):
             if (int(roster[i]["data"][k]["start"]) <= int(mfy[j]["start"])) and (int(roster[i]["data"][k]["end"]) >= int(mfy[j]["end"])):
                 foundList.append(roster[i]["data"][k]["name"])
 
+        # Get the weighted list
+        weighted_list = weighted_list_file.Weighted_List()
+        weighted_list.compare_list(foundList)
+        weighted_line_list = weighted_list.get_list()
+
         # Sort in order from WEIGHTED_LINE_LIST
         sortedList = []
-        for k in range(0, len(WEIGHTED_LINE_LIST)):
+        for k in range(0, len(weighted_line_list)):
             for l in range(len(foundList)):
-                if WEIGHTED_LINE_LIST[k] == foundList[l]:
+                if weighted_line_list[k] == foundList[l]:
                     sortedList.append(foundList[l])
-        if len(foundList) != len(sortedList):
-            print("FoundList:  ", foundList)
-            print("SortedList: ", sortedList, "\n")
-        # swapIndex = 1
-        # for k in range(0, len(WEIGHTED_LINE_LIST)):
-        #     for l in range(swapIndex, len(foundList)):
-        #         if WEIGHTED_LINE_LIST[k] == foundList[l]:
-        #             temp = foundList[swapIndex]
-        #             foundList[swapIndex] = foundList[l]
-        #             foundList[l] = temp
-        #             swapIndex += 1
         return sortedList
     except:
         return False
