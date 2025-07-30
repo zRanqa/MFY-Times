@@ -9,11 +9,6 @@ from selenium.webdriver.chrome.options import Options
 import tempfile
 import subprocess
 
-DRIVER_LOCATION = "/usr/local/bin/chromedriver"
-OPTIONS = Options()
-SERVICE = Service(DRIVER_LOCATION)
-
-
 import time
 import json
 import subprocess
@@ -36,6 +31,15 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'manual')))
 import make_folders
 import manual_calculation
+
+
+if sys.platform == "win32":
+    print("This Python script is running on Windows.")
+elif sys.platform == "linux":
+    print("This Python script is running on Linux.")
+    DRIVER_LOCATION = "/usr/local/bin/chromedriver"
+    OPTIONS = Options()
+    SERVICE = Service(DRIVER_LOCATION)
 
 
 
@@ -69,8 +73,18 @@ day_since_last_command = datetime.date.today()
 
 send_message = []
 
+trigger_redownload = False
+redownload_date = ""
+last_download_date = ""
+
 driver = None
 
+def get_driver():
+    if sys.platform == "win32":
+        return webdriver.Chrome()
+        
+    elif sys.platform == "linux":
+        return webdriver.Chrome(service=SERVICE, options=OPTIONS)
 
 def write_json(filename: str, week: str, data: list):
     file_path = os.path.join(f"data/{week}", filename)
@@ -202,7 +216,7 @@ def downloadMFY(date: str, day_or_week: str):
     global driver
     try:
     # Create a webdriver and open the EOPS website
-        driver = webdriver.Chrome(service=SERVICE, options=OPTIONS)
+        driver = get_driver()
         driver.get("https://eops.mcdonalds.com.au/Snap")
 
         # Maximise to stop the items from not being on the screen
@@ -278,7 +292,7 @@ def downloadRoster(date: str):
     try:
         needs_to_log_in = False
         if driver is None:
-            driver = webdriver.Chrome(service=SERVICE, options=OPTIONS)
+            driver = get_driver()
             needs_to_log_in = True
         driver.get("https://myrestaurant.mcdonalds.com.au/Restaurant/1036/Home")
 
@@ -487,6 +501,8 @@ def main():
     global waiting_for_ready
     global send_message
     global total_mfy_data
+    global trigger_redownload
+    global redownload_date
     send_ready_message_once = True
     while True:
 
@@ -495,12 +511,17 @@ def main():
         date, day_difference = find_last_folder_date(datetime.date.today().day, datetime.date.today().month, datetime.date.today().year)
         # print(f"Testing date difference: {day_difference}")
 
-        if day_difference > 7:
-            if ready_to_download:
+        if day_difference > 7 or trigger_redownload:
+            if ready_to_download or trigger_redownload:
                 waiting_for_ready = False
                 ready_to_download = False
                 send_ready_message_once = True
-                os.makedirs(f"data/{make_folders.increment_date(date, 7)}")
+                if trigger_redownload:
+                    trigger_redownload = False
+                    date = redownload_date
+                    os.makedirs(f"data/{date}")
+                else:
+                    os.makedirs(f"data/{make_folders.increment_date(date, 7)}")
                 date = sort_dates(os.listdir('data'))[-1]
                 mfy_worked = downloadMFY(date, "week")
                 roster_worked = downloadRoster(date)
@@ -882,37 +903,48 @@ async def sayHello(interaction: discord.Interaction):
     else:
         await interaction.response.send_message("Not ready to download yet!!")
 
-# @client.tree.command(name="download", description="Download a whole week of data", guild=GUILD_ID)
-# async def getData(interaction: discord.Interaction, date: str, overwrite: Optional[str]):
-#     if interaction.user.id == ZRANQA_ID:
-#         valid_date, valid_message = is_valid_date(date)
-#         if not valid_date:
-#             await interaction.response.send_message(f"Error with date: {valid_message}")
-#             return
+@client.tree.command(name="download", description="Download a whole week of data", guild=GUILD_ID)
+async def getData(interaction: discord.Interaction, date: str, overwrite: Optional[str]):
+    
+    global trigger_redownload
+    global redownload_date
+    global last_download_date
+    if interaction.user.id == ZRANQA_ID:
+        valid_date, valid_message = is_valid_date(date)
+        if not valid_date:
+            await interaction.response.send_message(f"Error with date: {valid_message}")
+            return
         
-        
-#         folder = os.listdir(f'data')
-#         found_folder = False
-#         for i in folder:
-#             if i == date:
-#                 found_folder = True
-#         if found_folder:
-#             if overwrite is not None and overwrite.lower() == "y":
-#                 await interaction.response.send_message(f"Deleting folder and downloading new data")
-#                 os.remove(f'data/{date}')
-                
-#                 thread = threading.Thread(target=downloadRoster, args=(date,))
-#                 thread.start()
-#             else:
-#                 await interaction.response.send_message(f"ERROR: Folder already exists. Type 'y' in the optional 'overwrite' paramter to re-download the data")
-#         else:
-#             await interaction.response.send_message(f"Getting new Roster Data")
-#             thread = threading.Thread(target=downloadRoster, args=(date,))
-#             thread.start()
-#         if not found_folder:
+        if date != last_download_date:
+            await interaction.response.send_message(f"Date: {date} DOES NOT match last date: {last_download_date}, are you sure you want to use this date?")
+            last_download_date = date
+            return
+        else:
+            folder = os.listdir(f'data')
+            found_folder = False
+            for i in folder:
+                if i == date:
+                    found_folder = True
+            if found_folder:
+                if overwrite is not None and overwrite.lower() == "y":
+                    await interaction.response.send_message(f"Deleting folder and downloading new data")
+                    folder = os.listdir(f'data/{date}')
+                    for i in folder:
+                        os.remove(f'data/{date}/{i}')
+                    os.rmdir(f'data/{date}')
+                    
+                    trigger_redownload = True
+                    redownload_date = date
+                else:
+                    await interaction.response.send_message(f"ERROR: Folder already exists. Type 'y' in the optional 'overwrite' paramter to re-download the data")
+            else:
+                await interaction.response.send_message(f"Downloading new data")
+
+                trigger_redownload = True
+                redownload_date = date
             
-#     else:
-#         await interaction.response.send_message("Sorry broskiwilliams, these commands are for jonno only")
+    else:
+        await interaction.response.send_message("Sorry broskiwilliams, these commands are for jonno only")
 
 @client.tree.command(name="get", description="Download a specific day/week of MFY/roster", guild=GUILD_ID)
 async def getData(interaction: discord.Interaction, type: str, date: str, overwrite: Optional[str]):
